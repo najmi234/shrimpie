@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Settings, Users, History, MessageSquareText, ChevronLeft, ChevronRight } from "lucide-react"
+import { LayoutDashboard, Settings, Globe, History, MessageSquareText, ChevronLeft, ChevronRight } from "lucide-react"
 import { useSidebar } from "./sidebar-context"
 
 export function Sidebar() {
@@ -67,10 +67,10 @@ export function Sidebar() {
                     href="#"
                     className={`flex items-center gap-3 px-3 py-2.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg font-medium transition-colors ${collapsed ? "justify-center" : ""
                         }`}
-                    title="Accounts"
+                    title="Webgis"
                 >
-                    <Users className="w-5 h-5 shrink-0" />
-                    {!collapsed && <span>Accounts</span>}
+                    <Globe className="w-5 h-5 shrink-0" />
+                    {!collapsed && <span>Webgis</span>}
                 </Link>
 
                 {/* Penambahan: Chat Agent di atas Settings */}
