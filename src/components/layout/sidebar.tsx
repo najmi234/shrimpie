@@ -2,12 +2,22 @@
 
 import Link from "next/link"
 import Image from "next/image"
-// Menambahkan History dan MessageSquare
+import { usePathname } from "next/navigation"
 import { LayoutDashboard, Settings, Users, History, MessageSquareText, ChevronLeft, ChevronRight } from "lucide-react"
 import { useSidebar } from "./sidebar-context"
 
 export function Sidebar() {
     const { collapsed, toggleSidebar } = useSidebar()
+    const pathname = usePathname()
+
+    const linkClass = (href: string) => {
+        const isActive = pathname.startsWith(href)
+        return `flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${collapsed ? "justify-center" : ""
+            } ${isActive
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            }`
+    }
 
     return (
         <aside
@@ -37,19 +47,16 @@ export function Sidebar() {
             <nav className="flex-1 p-4 flex flex-col gap-2">
                 <Link
                     href="/dashboard"
-                    className={`flex items-center gap-3 px-3 py-2.5 bg-sidebar-accent text-sidebar-accent-foreground rounded-lg font-medium ${collapsed ? "justify-center" : ""
-                        }`}
+                    className={linkClass("/dashboard")}
                     title="Dashboard"
                 >
                     <LayoutDashboard className="w-5 h-5 shrink-0" />
                     {!collapsed && <span>Dashboard</span>}
                 </Link>
 
-                {/* Perubahan: Droplets menjadi History */}
                 <Link
-                    href="#"
-                    className={`flex items-center gap-3 px-3 py-2.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg font-medium transition-colors ${collapsed ? "justify-center" : ""
-                        }`}
+                    href="/riwayat"
+                    className={linkClass("/riwayat")}
                     title="Riwayat"
                 >
                     <History className="w-5 h-5 shrink-0" />

@@ -1,12 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import { Menu, Bell, Sun, Moon, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
+const pageTitles: Record<string, string> = {
+    "/dashboard": "Dashboard",
+    "/riwayat": "Riwayat Monitoring",
+}
+
 export function Navbar() {
+    const pathname = usePathname()
     const [darkMode, setDarkMode] = useState(false)
     const [scrolled, setScrolled] = useState(false)
+
+    const title = pageTitles[pathname] ?? "Shrimpie"
 
     // Load saved theme
     useEffect(() => {
@@ -43,8 +52,8 @@ export function Navbar() {
                 <button className="md:hidden p-2 text-muted-foreground hover:bg-muted rounded-lg">
                     <Menu className="w-5 h-5" />
                 </button>
-                <h1 className="text-xl px-4 font-semibold hidden sm:block">
-                    Dashboard
+                <h1 className="text-2xl px-4 font-semibold hidden sm:block">
+                    {title}
                 </h1>
             </div>
 

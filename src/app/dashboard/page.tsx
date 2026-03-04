@@ -43,7 +43,7 @@ export default function ShrimpMonitoringDashboard() {
   const [cards, setCards] = useState([
     { title: "Avg Body Length (cm)", value: 0, data: generateRandomData(), color: "#22c55e", icon: Ruler },
     { title: "Avg Body Weight (g)", value: 0, data: generateRandomData(), color: "#f59e0b", icon: Weight },
-    { title: "Activity", value: 0, data: generateRandomData(), color: "#6366f1", icon: Activity },
+    { title: "Activity Level (%)", value: 0, data: generateRandomData(), color: "#6366f1", icon: Activity },
   ])
 
   const [deviceStatus, setDeviceStatus] = useState([
@@ -85,8 +85,8 @@ export default function ShrimpMonitoringDashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="lg:col-span-2"
         >
-          <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6 py-0">
+          <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
               <div className="aspect-video bg-black rounded-xl flex items-center justify-center">
                 <video
                   src="/car.mp4"
@@ -103,11 +103,11 @@ export default function ShrimpMonitoringDashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow h-full">
-            <CardContent className="p-6 py-0 flex flex-col gap-2">
+          <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow h-full">
+            <CardContent className="p-6 flex flex-col gap-2">
               <div>
                 <h2 className="text-xl font-semibold mb-3 text-foreground">Select Device</h2>
-                <Combobox items={frameworks}>
+                <Combobox items={frameworks} defaultValue="Device 1">
                   <ComboboxInput placeholder="Select a Device" />
                   <ComboboxContent>
                     <ComboboxEmpty>No items found.</ComboboxEmpty>
@@ -155,8 +155,8 @@ export default function ShrimpMonitoringDashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="xl:col-span-2 md:col-span-2"
         >
-          <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-4 py-0 flex flex-col h-[177px]">
+          <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-4 flex flex-col h-[208px]">
               <h3 className="text-sm font-semibold text-foreground mb-3">Device Status</h3>
               <div className="overflow-auto flex-1">
                 <table className="w-full text-sm">
@@ -201,8 +201,8 @@ export default function ShrimpMonitoringDashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: (index + 1) * 0.1 }}
           >
-            <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-4 py-0">
+            <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-2xl font-bold text-foreground">{card.value}</p>
