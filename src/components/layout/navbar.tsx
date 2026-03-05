@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { Menu, Bell, Sun, Moon, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useSidebar } from "./sidebar-context"
 
 const pageTitles: Record<string, string> = {
     "/dashboard": "Dashboard",
@@ -12,6 +13,7 @@ const pageTitles: Record<string, string> = {
 
 export function Navbar() {
     const pathname = usePathname()
+    const { setMobileOpen } = useSidebar()
     const [darkMode, setDarkMode] = useState(false)
     const [scrolled, setScrolled] = useState(false)
 
@@ -49,10 +51,13 @@ export function Navbar() {
     return (
         <header className={`h-16 bg-background flex items-center justify-between px-4 sm:px-6 sticky top-0 z-10 w-full transition-shadow duration-300 ${scrolled ? "shadow-md" : ""}`}>
             <div className="flex items-center gap-4">
-                <button className="md:hidden p-2 text-muted-foreground hover:bg-muted rounded-lg">
+                <button
+                    className="md:hidden p-2 text-muted-foreground hover:bg-muted rounded-lg active:scale-90 transition-transform"
+                    onClick={() => setMobileOpen(true)}
+                >
                     <Menu className="w-5 h-5" />
                 </button>
-                <h1 className="text-2xl px-4 font-semibold hidden sm:block">
+                <h1 className="text-xl font-semibold sm:text-2xl">
                     {title}
                 </h1>
             </div>
