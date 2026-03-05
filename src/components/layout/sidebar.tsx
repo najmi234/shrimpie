@@ -1,14 +1,48 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
-import { LayoutDashboard, Settings, Globe, History, MessageSquareText, ChevronLeft, ChevronRight } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { LayoutDashboard, Settings, Globe, History, MessageSquareText, ChevronLeft, ChevronRight, LogOut, ChevronsUpDown, UserPen, MonitorCog } from "lucide-react"
 import { useSidebar } from "./sidebar-context"
+import { createClient } from "@/lib/supabase/client"
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 
 export function Sidebar() {
     const { collapsed, toggleSidebar } = useSidebar()
     const pathname = usePathname()
+    const router = useRouter()
+
+    const [user, setUser] = useState<{ email: string; name: string } | null>(null)
+
+    useEffect(() => {
+        const supabase = createClient()
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) {
+                setUser({
+                    email: user.email ?? "",
+                    name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "User",
+                })
+            }
+        })
+    }, [])
+
+    const userInitial = user?.name?.charAt(0)?.toUpperCase() || "U"
+    const userName = user?.name || "User"
+    const userEmail = user?.email || ""
+
+    const handleSignOut = async () => {
+        await fetch("/auth/signout", { method: "POST" })
+        router.push("/login")
+    }
 
     const linkClass = (href: string) => {
         const isActive = pathname.startsWith(href)
@@ -95,17 +129,69 @@ export function Sidebar() {
                 </Link>
             </nav>
             <div className="p-4 border-t border-sidebar-border">
-                <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
-                    <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center font-bold text-sidebar-accent-foreground shrink-0">
-                        A
-                    </div>
-                    {!collapsed && (
-                        <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-sidebar-foreground">Admin</span>
-                            <span className="text-xs text-sidebar-foreground/60">Farm Manager</span>
-                        </div>
-                    )}
-                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <button
+                            className={`flex items-center gap-3 w-full rounded-lg p-2 text-left hover:bg-sidebar-accent transition-colors outline-none ${collapsed ? "justify-center" : ""}`}
+                        >
+                            <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center font-bold text-sidebar-accent-foreground shrink-0">
+                                {userInitial}
+                            </div>
+                            {!collapsed && (
+                                <>
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                        <span className="text-sm font-semibold text-sidebar-foreground truncate">{userName}</span>
+                                        <span className="text-xs text-sidebar-foreground/60 truncate">{userEmail}</span>
+                                    </div>
+                                    <ChevronsUpDown className="w-4 h-4 text-sidebar-foreground/50 shrink-0" />
+                                </>
+                            )}
+                        </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                        side="top"
+                        align={collapsed ? "center" : "start"}
+                        sideOffset={8}
+                        className="w-56"
+                    >
+                        <DropdownMenuLabel className="font-normal">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center font-bold text-sidebar-accent-foreground shrink-0">
+                                    {userInitial}
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-semibold truncate">{userName}</span>
+                                    <span className="text-xs text-muted-foreground truncate">{userEmail}</span>
+                                </div>
+                            </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                            <Link href="#" className="cursor-pointer">
+                                <UserPen className="w-4 h-4" />
+                                Profil
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <Link href="#" className="cursor-pointer">
+                                <MonitorCog className="w-4 h-4" />
+                                Admin Panel
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            variant="destructive"
+                            className="cursor-pointer"
+                            onSelect={(e) => {
+                                e.preventDefault()
+                                handleSignOut()
+                            }}
+                        >
+                            <LogOut className="w-4 h-4" />
+                            Keluar
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </aside>
     )

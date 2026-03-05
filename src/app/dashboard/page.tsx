@@ -89,8 +89,10 @@ export default function ShrimpMonitoringDashboard() {
             <CardContent className="p-6">
               <div className="aspect-video bg-black rounded-xl flex items-center justify-center">
                 <video
-                  src="/car.mp4"
+                  src="/vid.mp4"
                   controls
+                  autoPlay
+                  muted
                   className="w-full h-full rounded-xl"
                 />
               </div>
