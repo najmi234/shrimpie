@@ -3,7 +3,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
 import { DashboardContent } from "@/components/layout/dashboard-content";
 
-export default function WebGISLayout({
+export default function ChatAgentLayout({
     children,
 }: {
     children: React.ReactNode;

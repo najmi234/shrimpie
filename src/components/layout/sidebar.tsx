@@ -121,7 +121,7 @@ export function Sidebar() {
 
                     {/* Penambahan: Chat Agent di atas Settings */}
                     <Link
-                        href="#"
+                        href="/chat-agent"
                         className={linkClass("/chat-agent")}
                         title="Chat Agent"
                     >

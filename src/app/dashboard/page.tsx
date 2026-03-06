@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { motion } from "framer-motion"
-import { Ruler, Weight, Activity } from "lucide-react"
+import { Ruler, Weight, Activity, Sparkles } from "lucide-react"
+import Link from "next/link"
 import {
   Combobox,
   ComboboxContent,
@@ -26,9 +27,20 @@ const frameworks = [
 
 const videoFiles = [
   "04032026-0800.mp4",
+  "04032026-1000.mp4",
   "04032026-1200.mp4",
+  "04032026-1400.mp4",
   "04032026-1600.mp4",
+  "04032026-1800.mp4",
   "04032026-2000.mp4",
+  "05032026-0800.mp4",
+  "05032026-1200.mp4",
+  "05032026-1600.mp4",
+  "05032026-2000.mp4",
+  "06032026-0800.mp4",
+  "06032026-1200.mp4",
+  "06032026-1600.mp4",
+  "06032026-2000.mp4",
 ]
 
 function generateRandomData() {
@@ -87,7 +99,7 @@ export default function ShrimpMonitoringDashboard() {
         >
           <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-6">
-              <div className="aspect-video bg-black rounded-xl flex items-center justify-center">
+              <div className="aspect-video bg-black rounded-xl flex items-center justify-center overflow-hidden">
                 <video
                   src="/vid.mp4"
                   controls
@@ -104,48 +116,64 @@ export default function ShrimpMonitoringDashboard() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          className="relative lg:h-full"
         >
-          <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow h-full">
-            <CardContent className="p-6 flex flex-col gap-2">
-              <div>
-                <h2 className="text-xl font-semibold mb-3 text-foreground">Select Device</h2>
-                <Combobox items={frameworks} defaultValue="Device 1">
-                  <ComboboxInput placeholder="Select a Device" />
-                  <ComboboxContent>
-                    <ComboboxEmpty>No items found.</ComboboxEmpty>
-                    <ComboboxList>
-                      {(item) => (
-                        <ComboboxItem key={item} value={item}>
-                          {item}
-                        </ComboboxItem>
-                      )}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold mb-3 text-foreground">Select Video</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {videoFiles.map((file) => {
-                    const name = file.replace(".mp4", "")
-                    const date = name.slice(0, 8)
-                    const time = name.slice(9)
-                    const label = `${date.slice(0, 2)}/${date.slice(2, 4)}/${date.slice(4)} ${time.slice(0, 2)}:${time.slice(2)}`
-                    return (
-                      <Button
-                        key={file}
-                        variant={selectedVideo === file ? "default" : "outline"}
-                        onClick={() => setSelectedVideo(file)}
-                        className="rounded-xl text-xs"
-                      >
-                        {label}
-                      </Button>
-                    )
-                  })}
+          <div className="lg:absolute lg:inset-0 w-full h-full">
+            <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow h-full flex flex-col min-h-0">
+              <CardContent className="p-6 flex flex-col gap-3 h-full min-h-0">
+                <div className="shrink-0">
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">Select Device</h2>
+                  <Combobox items={frameworks} defaultValue="Device 1">
+                    <ComboboxInput placeholder="Select a Device" />
+                    <ComboboxContent>
+                      <ComboboxEmpty>No items found.</ComboboxEmpty>
+                      <ComboboxList>
+                        {(item) => (
+                          <ComboboxItem key={item} value={item}>
+                            {item}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+
+                <div className="flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar">
+                  <h2 className="text-xl font-semibold mb-3 text-foreground sticky top-0 bg-card py-1 z-10">Select Video</h2>
+                  <div className="grid grid-cols-2 gap-3 pb-2">
+                    {videoFiles.map((file) => {
+                      const name = file.replace(".mp4", "")
+                      const date = name.slice(0, 8)
+                      const time = name.slice(9)
+                      const label = `${date.slice(0, 2)}/${date.slice(2, 4)}/${date.slice(4)} ${time.slice(0, 2)}:${time.slice(2)}`
+                      return (
+                        <Button
+                          key={file}
+                          variant={selectedVideo === file ? "default" : "outline"}
+                          onClick={() => setSelectedVideo(file)}
+                          className="rounded-xl text-xs"
+                        >
+                          {label}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-border/50 shrink-0">
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Kondisi udang terlihat sehat dengan tingkat keaktifan normal.
+                  </p>
+                  <Button asChild className="w-full rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white gap-2">
+                    <Link className="text-xs" href="/chat-agent">
+                      <Sparkles />
+                      Analyze with AI
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </motion.div>
       </div>
 
