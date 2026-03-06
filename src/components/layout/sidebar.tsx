@@ -111,9 +111,8 @@ export function Sidebar() {
                     </Link>
 
                     <Link
-                        href="#"
-                        className={`flex items-center gap-3 px-3 py-2.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg font-medium transition-colors ${collapsed ? "justify-center" : ""
-                            }`}
+                        href="/webgis"
+                        className={linkClass("/webgis")}
                         title="Webgis"
                     >
                         <Globe className="w-5 h-5 shrink-0" />
@@ -123,8 +122,7 @@ export function Sidebar() {
                     {/* Penambahan: Chat Agent di atas Settings */}
                     <Link
                         href="#"
-                        className={`flex items-center gap-3 px-3 py-2.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg font-medium transition-colors ${collapsed ? "justify-center" : ""
-                            }`}
+                        className={linkClass("/chat-agent")}
                         title="Chat Agent"
                     >
                         <MessageSquareText className="w-5 h-5 shrink-0" />
@@ -133,8 +131,7 @@ export function Sidebar() {
 
                     <Link
                         href="#"
-                        className={`flex items-center gap-3 px-3 py-2.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg font-medium transition-colors ${collapsed ? "justify-center" : ""
-                            }`}
+                        className={linkClass("/settings")}
                         title="Settings"
                     >
                         <Settings className="w-5 h-5 shrink-0" />
