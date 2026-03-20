@@ -5,10 +5,13 @@ import { usePathname } from "next/navigation"
 import { Menu, Bell, Sun, Moon, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "./sidebar-context"
+import { GlobalSearch } from "./global-search"
 
 const pageTitles: Record<string, string> = {
     "/dashboard": "Dashboard",
     "/riwayat": "Riwayat Monitoring",
+    "/webgis": "WebGIS Tracker",
+    "/chat-agent": "Chat Agent"
 }
 
 export function Navbar() {
@@ -16,6 +19,7 @@ export function Navbar() {
     const { setMobileOpen } = useSidebar()
     const [darkMode, setDarkMode] = useState(false)
     const [scrolled, setScrolled] = useState(false)
+    const [searchOpen, setSearchOpen] = useState(false)
 
     const title = pageTitles[pathname] ?? "Shrimpie"
 
@@ -62,16 +66,23 @@ export function Navbar() {
                 </h1>
             </div>
 
-            <div className="flex items-center gap-3">
-                {/* Search Bar */}
-                <div className="relative hidden sm:block">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        className="h-9 w-48 lg:w-64 rounded-full bg-muted/50 border border-border pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:bg-background transition-all"
-                    />
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                {/* Search Bar Trigger */}
+                <div className="relative flex-1 sm:flex-none max-w-md sm:max-w-[200px] lg:max-w-xs w-full mr-2 sm:mr-0">
+                    <Button
+                        variant="outline"
+                        className="w-full justify-start text-sm text-muted-foreground h-9 rounded-full px-4 pr-1.5 bg-muted/50 border-border hover:bg-accent/50 group"
+                        onClick={() => setSearchOpen(true)}
+                    >
+                        <Search className="mr-2 h-4 w-4 shrink-0" />
+                        <span className="flex-1 text-left line-clamp-1">Search...</span>
+                        <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex ml-2 transition-colors group-hover:bg-background">
+                            <span className="text-xs">⌘</span>K
+                        </kbd>
+                    </Button>
                 </div>
+
+                <GlobalSearch open={searchOpen} setOpen={setSearchOpen} />
 
                 {/* Theme Switch */}
                 <Button

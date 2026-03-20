@@ -26,8 +26,8 @@ const frameworks = [
 ] as const
 
 const videoFiles = [
-  "04032026-0800.mp4",
-  "04032026-1000.mp4",
+  "vid.mp4",
+  "20260320_161558.mp4",
   "04032026-1200.mp4",
   "04032026-1400.mp4",
   "04032026-1600.mp4",
@@ -101,7 +101,8 @@ export default function ShrimpMonitoringDashboard() {
             <CardContent className="p-6">
               <div className="aspect-video bg-black rounded-xl flex items-center justify-center overflow-hidden">
                 <video
-                  src="/vid.mp4"
+                  src={`https://shrimpie.qzz.io/video/${selectedVideo}`}
+                  // src={`https://shrimpie.qzz.io/video/vid.mp4`}
                   controls
                   autoPlay
                   muted
