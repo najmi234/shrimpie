@@ -7,6 +7,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 import { motion } from "framer-motion"
 import { Ruler, Weight, Activity, Sparkles } from "lucide-react"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 import {
   Combobox,
   ComboboxContent,
@@ -18,15 +19,24 @@ import {
 
 interface VideoEntry {
   device_id: string
+  device_name: string
   file_url: string
   recorded_at: string
 }
 
-function generateRandomData() {
-  return Array.from({ length: 20 }, (_, i) => ({
-    time: i,
-    value: Math.floor(Math.random() * 50) + 10,
-  }))
+interface DeviceMetric {
+  device_id: string
+  avg_body_length_cm: number
+  avg_body_weight_g: number
+  activity_level_pct: number
+  recorded_at: string
+}
+
+interface DeviceStatus {
+  name: string
+  status: string
+  location: string
+  last_update_at: string
 }
 
 function formatRecordedAt(recorded_at: string) {
@@ -40,34 +50,37 @@ function formatRecordedAt(recorded_at: string) {
 }
 
 export default function ShrimpMonitoringDashboard() {
+  const supabase = createClient()
   const [videos, setVideos] = useState<VideoEntry[]>([])
-  const [selectedDevice, setSelectedDevice] = useState<string>("")
+  const [selectedDeviceName, setSelectedDeviceName] = useState<string>("")
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string>("")
-  const [cards, setCards] = useState([
-    { title: "Avg Body Length (cm)", value: 0, data: generateRandomData(), color: "#22c55e", icon: Ruler },
-    { title: "Avg Body Weight (g)", value: 0, data: generateRandomData(), color: "#f59e0b", icon: Weight },
-    { title: "Activity Level (%)", value: 0, data: generateRandomData(), color: "#6366f1", icon: Activity },
-  ])
+  const [metrics, setMetrics] = useState<DeviceMetric[]>([])
 
-  const [deviceStatus, setDeviceStatus] = useState([
-    { name: "Device 1", status: "Active", lastUpdate: "2 min ago", battery: "85%" },
-    { name: "Device 2", status: "Active", lastUpdate: "1 min ago", battery: "92%" },
-    { name: "Device 3", status: "Inactive", lastUpdate: "15 min ago", battery: "12%" },
-    { name: "Device 4", status: "Active", lastUpdate: "3 min ago", battery: "67%" },
-    { name: "Device 5", status: "Active", lastUpdate: "1 min ago", battery: "78%" },
-  ])
+  const [deviceStatus, setDeviceStatus] = useState<DeviceStatus[]>([])
 
-  // Derive unique devices from API data
+  // Derive unique device names from API data
   const devices = useMemo(() => {
-    const unique = [...new Set(videos.map((v) => v.device_id))]
+    const unique = [...new Set(videos.map((v) => v.device_name))]
     return unique as readonly string[]
   }, [videos])
 
-  // Filter videos by selected device
+  // Map device_name to device_id for metrics query
+  const deviceIdMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    videos.forEach((v) => {
+      if (!map[v.device_name]) map[v.device_name] = v.device_id
+    })
+    return map
+  }, [videos])
+
+  // Get device_id for metrics query
+  const selectedDeviceId = deviceIdMap[selectedDeviceName] || ""
+
+  // Filter videos by selected device name
   const filteredVideos = useMemo(() => {
-    if (!selectedDevice) return videos
-    return videos.filter((v) => v.device_id === selectedDevice)
-  }, [videos, selectedDevice])
+    if (!selectedDeviceName) return videos
+    return videos.filter((v) => v.device_name === selectedDeviceName)
+  }, [videos, selectedDeviceName])
 
   // Fetch videos from API
   useEffect(() => {
@@ -77,8 +90,7 @@ export default function ShrimpMonitoringDashboard() {
         const data: VideoEntry[] = await res.json()
         setVideos(data)
         if (data.length > 0) {
-          const firstDevice = data[0].device_id
-          setSelectedDevice(firstDevice)
+          setSelectedDeviceName(data[0].device_name)
           setSelectedVideoUrl(data[0].file_url)
         }
       } catch (err) {
@@ -88,26 +100,70 @@ export default function ShrimpMonitoringDashboard() {
     fetchVideos()
   }, [])
 
+  // Fetch device metrics from Supabase using device_id
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCards((prev) =>
-        prev.map((card) => ({
-          ...card,
-          value: parseFloat((Math.random() * 100).toFixed(2)),
-          data: generateRandomData(),
-        }))
-      )
-      setDeviceStatus((prev) =>
-        prev.map((device) => ({
-          ...device,
-          status: Math.random() > 0.2 ? "Active" : "Inactive",
-          lastUpdate: `${Math.floor(Math.random() * 10) + 1} min ago`,
-          battery: `${Math.floor(Math.random() * 60) + 40}%`,
-        }))
-      )
-    }, 3000)
+    if (!selectedDeviceId) return
+    async function fetchMetrics() {
+      const { data, error } = await supabase
+        .from("device_metrics")
+        .select("*")
+        .eq("device_id", selectedDeviceId)
+        .order("recorded_at", { ascending: true })
+      console.log("[DEBUG] metrics fetch result:", { data, error })
+      if (error) {
+        console.error("Failed to fetch device metrics:", error)
+        return
+      }
+      setMetrics(data ?? [])
+    }
+    fetchMetrics()
+  }, [selectedDeviceId])
 
-    return () => clearInterval(interval)
+  // Build cards from metrics data
+  const cards = useMemo(() => {
+    console.log("selectedDeviceId:", selectedDeviceId)
+    console.log("[DEBUG] metrics state:", metrics.length, "rows", metrics.slice(0, 2))
+    const latestMetric = metrics.length > 0 ? metrics[metrics.length - 1] : null
+    return [
+      {
+        title: "Avg Body Length (cm)",
+        value: latestMetric?.avg_body_length_cm ?? 0,
+        data: metrics.map((m) => ({ time: formatRecordedAt(m.recorded_at), value: m.avg_body_length_cm })),
+        color: "#22c55e",
+        icon: Ruler,
+      },
+      {
+        title: "Avg Body Weight (g)",
+        value: latestMetric?.avg_body_weight_g ?? 0,
+        data: metrics.map((m) => ({ time: formatRecordedAt(m.recorded_at), value: m.avg_body_weight_g })),
+        color: "#f59e0b",
+        icon: Weight,
+      },
+      {
+        title: "Activity Level (%)",
+        value: latestMetric?.activity_level_pct ?? 0,
+        data: metrics.map((m) => ({ time: formatRecordedAt(m.recorded_at), value: m.activity_level_pct })),
+        color: "#6366f1",
+        icon: Activity,
+      },
+    ]
+  }, [metrics])
+
+  // Fetch device status from Supabase
+  useEffect(() => {
+    async function fetchDeviceStatus() {
+      const { data, error } = await supabase
+        .from("devices")
+        .select("*")
+      console.log("[DEBUG] devices fetch error:", error)
+      console.log("[DEBUG] devices fetch data:", JSON.stringify(data, null, 2))
+      if (error) {
+        console.error("Failed to fetch device status:", error)
+        return
+      }
+      setDeviceStatus(data ?? [])
+    }
+    fetchDeviceStatus()
   }, [])
 
   return (
@@ -152,11 +208,11 @@ export default function ShrimpMonitoringDashboard() {
                   <h2 className="text-xl font-semibold mb-3 text-foreground">Select Device</h2>
                   <Combobox
                     items={devices}
-                    value={selectedDevice}
+                    value={selectedDeviceName}
                     onValueChange={(val) => {
                       if (val === null) return
-                      setSelectedDevice(val)
-                      const firstVideo = videos.find((v) => v.device_id === val)
+                      setSelectedDeviceName(val)
+                      const firstVideo = videos.find((v) => v.device_name === val)
                       if (firstVideo) setSelectedVideoUrl(firstVideo.file_url)
                     }}
                   >
@@ -225,27 +281,33 @@ export default function ShrimpMonitoringDashboard() {
                       <th className="pb-2 font-medium text-muted-foreground">Device</th>
                       <th className="pb-2 font-medium text-muted-foreground">Status</th>
                       <th className="pb-2 font-medium text-muted-foreground">Last Update</th>
-                      <th className="pb-2 font-medium text-muted-foreground">Battery</th>
+                      <th className="pb-2 font-medium text-muted-foreground">Location</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {deviceStatus.map((device) => (
-                      <tr key={device.name} className="border-b border-border/50 last:border-0">
-                        <td className="py-2 font-medium text-foreground">{device.name}</td>
-                        <td className="py-2">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${device.status === "Active"
-                            ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                            : "bg-red-500/10 text-red-600 dark:text-red-400"
-                            }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${device.status === "Active" ? "bg-green-500" : "bg-red-500"
-                              }`} />
-                            {device.status}
-                          </span>
-                        </td>
-                        <td className="py-2 text-muted-foreground">{device.lastUpdate}</td>
-                        <td className="py-2 text-muted-foreground">{device.battery}</td>
-                      </tr>
-                    ))}
+                    {[...deviceStatus]
+                      .sort((a, b) => {
+                        const numA = parseInt(a.name.match(/\d+/)?.[0] || "0")
+                        const numB = parseInt(b.name.match(/\d+/)?.[0] || "0")
+                        return numA - numB
+                      })
+                      .map((device) => (
+                        <tr key={device.name} className="border-b border-border/50 last:border-0">
+                          <td className="py-2 font-medium text-foreground">{device.name}</td>
+                          <td className="py-2">
+                            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${device.status === "Active"
+                              ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                              : "bg-red-500/10 text-red-600 dark:text-red-400"
+                              }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${device.status === "Active" ? "bg-green-500" : "bg-red-500"
+                                }`} />
+                              {device.status}
+                            </span>
+                          </td>
+                          <td className="py-2 text-muted-foreground">{device.last_update_at ? formatRecordedAt(device.last_update_at) : "-"}</td>
+                          <td className="py-2 text-muted-foreground">{device.location || "-"}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
