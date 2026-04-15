@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import {
     AreaChart,
@@ -21,35 +21,24 @@ import {
     ComboboxItem,
     ComboboxList,
 } from "@/components/ui/combobox"
-import { DateRangePicker } from "@/components/ui/date-range-picker"
-import type { DateRange } from "react-day-picker"
+import { Input } from "@/components/ui/input"
 import { format, subDays } from "date-fns"
+import { createClient } from "@/lib/supabase/client"
 
-// ---------- dummy data ----------
+// ---------- types ----------
 
-const devices = [
-    "Device 1",
-    "Device 2",
-    "Device 3",
-    "Device 4",
-    "Device 5",
-] as const
-
-function generateHistoryData(days: number) {
-    const today = new Date()
-    return Array.from({ length: days }, (_, i) => {
-        const date = subDays(today, days - 1 - i)
-        return {
-            date: format(date, "dd MMM"),
-            fullDate: format(date, "yyyy-MM-dd"),
-            length: parseFloat((Math.random() * 6 + 4).toFixed(2)),
-            weight: parseFloat((Math.random() * 20 + 5).toFixed(2)),
-            activity: parseFloat((Math.random() * 100).toFixed(1)),
-        }
-    })
+interface DeviceOption {
+    id: string
+    name: string
 }
 
-const allData = generateHistoryData(30)
+interface MetricRow {
+    date: string
+    fullDate: string
+    length: number
+    weight: number
+    activity: number
+}
 
 // ---------- chart config ----------
 
@@ -77,20 +66,84 @@ const chartConfigs = [
 // ---------- component ----------
 
 export default function RiwayatPage() {
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: subDays(new Date(), 29),
-        to: new Date(),
-    })
+    const supabase = createClient()
 
+    const [devices, setDevices] = useState<DeviceOption[]>([])
+    const [selectedDeviceName, setSelectedDeviceName] = useState<string>("")
+    const [metricsData, setMetricsData] = useState<MetricRow[]>([])
+    const [fromDate, setFromDate] = useState(format(subDays(new Date(), 29), "yyyy-MM-dd"))
+    const [toDate, setToDate] = useState(format(new Date(), "yyyy-MM-dd"))
+
+    // Derive device names for combobox
+    const deviceNames = useMemo(() => devices.map((d) => d.name), [devices])
+
+    // Map device_name → device_id
+    const deviceIdMap = useMemo(() => {
+        const map: Record<string, string> = {}
+        devices.forEach((d) => { map[d.name] = d.id })
+        return map
+    }, [devices])
+
+    const selectedDeviceId = deviceIdMap[selectedDeviceName] || ""
+
+    // Fetch devices list
+    useEffect(() => {
+        async function fetchDevices() {
+            const { data, error } = await supabase
+                .from("devices")
+                .select("id, name")
+                .order("name")
+            if (error) {
+                console.error("Failed to fetch devices:", error)
+                return
+            }
+            const sorted = (data ?? []).sort((a, b) => {
+                const numA = parseInt(a.name.match(/\d+/)?.[0] || "0")
+                const numB = parseInt(b.name.match(/\d+/)?.[0] || "0")
+                return numA - numB
+            })
+            setDevices(sorted)
+            if (sorted.length > 0) setSelectedDeviceName(sorted[0].name)
+        }
+        fetchDevices()
+    }, [])
+
+    // Fetch metrics when device changes
+    useEffect(() => {
+        if (!selectedDeviceId) return
+        async function fetchMetrics() {
+            const { data, error } = await supabase
+                .from("device_metrics")
+                .select("avg_body_length_cm, avg_body_weight_g, activity_level_pct, recorded_at")
+                .eq("device_id", selectedDeviceId)
+                .order("recorded_at", { ascending: true })
+            if (error) {
+                console.error("Failed to fetch metrics:", error)
+                return
+            }
+            const formatted: MetricRow[] = (data ?? []).map((m) => {
+                const d = new Date(m.recorded_at)
+                return {
+                    date: format(d, "dd MMM"),
+                    fullDate: format(d, "yyyy-MM-dd"),
+                    length: m.avg_body_length_cm ?? 0,
+                    weight: m.avg_body_weight_g ?? 0,
+                    activity: m.activity_level_pct ?? 0,
+                }
+            })
+            setMetricsData(formatted)
+        }
+        fetchMetrics()
+    }, [selectedDeviceId])
+
+    // Filter by date range
     const filteredData = useMemo(() => {
-        if (!dateRange?.from) return allData
-        return allData.filter((d) => {
-            const dt = new Date(d.fullDate)
-            if (dateRange.from && dt < dateRange.from) return false
-            if (dateRange.to && dt > dateRange.to) return false
+        return metricsData.filter((d) => {
+            if (fromDate && d.fullDate < fromDate) return false
+            if (toDate && d.fullDate > toDate) return false
             return true
         })
-    }, [dateRange])
+    }, [fromDate, toDate, metricsData])
 
     return (
         <div className="container mx-auto space-y-8">
@@ -98,7 +151,13 @@ export default function RiwayatPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     {/* Device selector */}
-                    <Combobox items={devices} defaultValue="Device 1">
+                    <Combobox
+                        items={deviceNames}
+                        value={selectedDeviceName}
+                        onValueChange={(val) => {
+                            if (val !== null) setSelectedDeviceName(val)
+                        }}
+                    >
                         <ComboboxInput placeholder="Select a Device" />
                         <ComboboxContent>
                             <ComboboxEmpty>No items found.</ComboboxEmpty>
@@ -112,8 +171,27 @@ export default function RiwayatPage() {
                         </ComboboxContent>
                     </Combobox>
 
-                    {/* Date range picker */}
-                    <DateRangePicker value={dateRange} onChange={setDateRange} />
+                    {/* Date range inputs */}
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                            <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
+                            <Input
+                                type="date"
+                                value={fromDate}
+                                onChange={(e) => setFromDate(e.target.value)}
+                                className="h-9 w-[150px] text-sm"
+                            />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
+                            <Input
+                                type="date"
+                                value={toDate}
+                                onChange={(e) => setToDate(e.target.value)}
+                                className="h-9 w-[150px] text-sm"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -249,7 +327,7 @@ export default function RiwayatPage() {
                                                     {row.date}
                                                 </td>
                                                 <td className="py-3 pr-4 text-muted-foreground">
-                                                    Device 1
+                                                    {selectedDeviceName}
                                                 </td>
                                                 <td className="py-3 pr-4 text-foreground">
                                                     {row.length} cm
