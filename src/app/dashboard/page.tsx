@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
@@ -16,32 +16,11 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox"
 
-
-const frameworks = [
-  "Device 1",
-  "Device 2",
-  "Device 3",
-  "Device 4",
-  "Device 5",
-] as const
-
-const videoFiles = [
-  "vid.mp4",
-  "20260320_161558.mp4",
-  "04032026-1200.mp4",
-  "04032026-1400.mp4",
-  "04032026-1600.mp4",
-  "04032026-1800.mp4",
-  "04032026-2000.mp4",
-  "05032026-0800.mp4",
-  "05032026-1200.mp4",
-  "05032026-1600.mp4",
-  "05032026-2000.mp4",
-  "06032026-0800.mp4",
-  "06032026-1200.mp4",
-  "06032026-1600.mp4",
-  "06032026-2000.mp4",
-]
+interface VideoEntry {
+  device_id: string
+  file_url: string
+  recorded_at: string
+}
 
 function generateRandomData() {
   return Array.from({ length: 20 }, (_, i) => ({
@@ -50,8 +29,20 @@ function generateRandomData() {
   }))
 }
 
+function formatRecordedAt(recorded_at: string) {
+  const d = new Date(recorded_at)
+  const dd = String(d.getDate()).padStart(2, "0")
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const yyyy = d.getFullYear()
+  const hh = String(d.getHours()).padStart(2, "0")
+  const min = String(d.getMinutes()).padStart(2, "0")
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}`
+}
+
 export default function ShrimpMonitoringDashboard() {
-  const [selectedVideo, setSelectedVideo] = useState(videoFiles[0])
+  const [videos, setVideos] = useState<VideoEntry[]>([])
+  const [selectedDevice, setSelectedDevice] = useState<string>("")
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState<string>("")
   const [cards, setCards] = useState([
     { title: "Avg Body Length (cm)", value: 0, data: generateRandomData(), color: "#22c55e", icon: Ruler },
     { title: "Avg Body Weight (g)", value: 0, data: generateRandomData(), color: "#f59e0b", icon: Weight },
@@ -65,6 +56,37 @@ export default function ShrimpMonitoringDashboard() {
     { name: "Device 4", status: "Active", lastUpdate: "3 min ago", battery: "67%" },
     { name: "Device 5", status: "Active", lastUpdate: "1 min ago", battery: "78%" },
   ])
+
+  // Derive unique devices from API data
+  const devices = useMemo(() => {
+    const unique = [...new Set(videos.map((v) => v.device_id))]
+    return unique as readonly string[]
+  }, [videos])
+
+  // Filter videos by selected device
+  const filteredVideos = useMemo(() => {
+    if (!selectedDevice) return videos
+    return videos.filter((v) => v.device_id === selectedDevice)
+  }, [videos, selectedDevice])
+
+  // Fetch videos from API
+  useEffect(() => {
+    async function fetchVideos() {
+      try {
+        const res = await fetch("https://shrimpie.qzz.io/videos")
+        const data: VideoEntry[] = await res.json()
+        setVideos(data)
+        if (data.length > 0) {
+          const firstDevice = data[0].device_id
+          setSelectedDevice(firstDevice)
+          setSelectedVideoUrl(data[0].file_url)
+        }
+      } catch (err) {
+        console.error("Failed to fetch videos:", err)
+      }
+    }
+    fetchVideos()
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -100,14 +122,18 @@ export default function ShrimpMonitoringDashboard() {
           <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="aspect-video bg-black rounded-xl flex items-center justify-center overflow-hidden">
-                <video
-                  src={`https://shrimpie.qzz.io/video/${selectedVideo}`}
-                  // src={`https://shrimpie.qzz.io/video/vid.mp4`}
-                  controls
-                  autoPlay
-                  muted
-                  className="w-full h-full rounded-xl"
-                />
+                {selectedVideoUrl ? (
+                  <video
+                    key={selectedVideoUrl}
+                    src={selectedVideoUrl}
+                    controls
+                    autoPlay
+                    muted
+                    className="w-full h-full rounded-xl"
+                  />
+                ) : (
+                  <p className="text-muted-foreground">Loading video...</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -124,10 +150,19 @@ export default function ShrimpMonitoringDashboard() {
               <CardContent className="p-6 flex flex-col gap-3 h-full min-h-0">
                 <div className="shrink-0">
                   <h2 className="text-xl font-semibold mb-3 text-foreground">Select Device</h2>
-                  <Combobox items={frameworks} defaultValue="Device 1">
+                  <Combobox
+                    items={devices}
+                    value={selectedDevice}
+                    onValueChange={(val) => {
+                      if (val === null) return
+                      setSelectedDevice(val)
+                      const firstVideo = videos.find((v) => v.device_id === val)
+                      if (firstVideo) setSelectedVideoUrl(firstVideo.file_url)
+                    }}
+                  >
                     <ComboboxInput placeholder="Select a Device" />
                     <ComboboxContent>
-                      <ComboboxEmpty>No items found.</ComboboxEmpty>
+                      <ComboboxEmpty>No devices found.</ComboboxEmpty>
                       <ComboboxList>
                         {(item) => (
                           <ComboboxItem key={item} value={item}>
@@ -142,22 +177,16 @@ export default function ShrimpMonitoringDashboard() {
                 <div className="flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar">
                   <h2 className="text-xl font-semibold mb-3 text-foreground sticky top-0 bg-card py-1 z-10">Select Video</h2>
                   <div className="grid grid-cols-2 gap-3 pb-2">
-                    {videoFiles.map((file) => {
-                      const name = file.replace(".mp4", "")
-                      const date = name.slice(0, 8)
-                      const time = name.slice(9)
-                      const label = `${date.slice(0, 2)}/${date.slice(2, 4)}/${date.slice(4)} ${time.slice(0, 2)}:${time.slice(2)}`
-                      return (
-                        <Button
-                          key={file}
-                          variant={selectedVideo === file ? "default" : "outline"}
-                          onClick={() => setSelectedVideo(file)}
-                          className="rounded-xl text-xs"
-                        >
-                          {label}
-                        </Button>
-                      )
-                    })}
+                    {filteredVideos.map((video) => (
+                      <Button
+                        key={video.file_url}
+                        variant={selectedVideoUrl === video.file_url ? "default" : "outline"}
+                        onClick={() => setSelectedVideoUrl(video.file_url)}
+                        className="rounded-xl text-xs"
+                      >
+                        {formatRecordedAt(video.recorded_at)}
+                      </Button>
+                    ))}
                   </div>
                 </div>
 
