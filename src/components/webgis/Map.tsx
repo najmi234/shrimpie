@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
     MapContainer,
@@ -40,9 +41,10 @@ const createCustomIcon = (status: string) => {
 };
 
 interface DeviceMetric {
-    body_length: number | null;
-    weight: number | null;
-    created_at: string;
+    avg_body_length_cm: number | null;
+    avg_body_weight_g: number | null;
+    activity_level_pct: number | null;
+    recorded_at: string;
 }
 
 interface Device {
@@ -57,33 +59,16 @@ interface Device {
 function parseLocation(locationData: any): [number, number] | null {
     if (!locationData) return null;
 
-    if (Array.isArray(locationData) && locationData.length >= 2) {
-        return [Number(locationData[0]), Number(locationData[1])];
-    }
-
-    if (typeof locationData === 'string') {
-        try {
-            const parsed = JSON.parse(locationData);
-            if (Array.isArray(parsed) && parsed.length >= 2) return [Number(parsed[0]), Number(parsed[1])];
-        } catch { }
-
-        // Check for PostGIS POINT string e.g., "POINT(lng lat)"
-        const match = locationData.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
-        if (match) {
-            if (locationData.toUpperCase().includes("POINT")) {
-                return [Number(match[2]), Number(match[1])]; // POINT(lng lat)
-            }
-            return [Number(match[1]), Number(match[2])]; // lat, lng
+    try {
+        const parsed = JSON.parse(locationData);
+        if (Array.isArray(parsed) && parsed.length >= 2) {
+            return [Number(parsed[1]), Number(parsed[0])]; // FIX (swap!)
         }
-    }
+    } catch { }
 
-    if (typeof locationData === "object" && locationData !== null) {
-        if ("lat" in locationData && "lng" in locationData) {
-            return [Number(locationData.lat), Number(locationData.lng)];
-        }
-        if (locationData.type === "Point" && Array.isArray(locationData.coordinates)) {
-            return [Number(locationData.coordinates[1]), Number(locationData.coordinates[0])]; // GeoJSON [lng, lat]
-        }
+    const match = locationData.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+    if (match) {
+        return [Number(match[2]), Number(match[1])]; // tetap swap
     }
 
     return null;
@@ -101,9 +86,12 @@ function MapController({ center }: { center: [number, number] | null }) {
 }
 
 export default function WebGISMap() {
+    const searchParams = useSearchParams();
+    const targetDeviceId = searchParams.get("device");
     const [devices, setDevices] = useState<Device[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeCenter, setActiveCenter] = useState<[number, number] | null>(null);
+    const [mapType, setMapType] = useState<"normal" | "satellite">("normal");
     const mapRef = useRef<L.Map>(null);
 
     useEffect(() => {
@@ -117,9 +105,10 @@ export default function WebGISMap() {
                     .select(`
             id, name, status, location,
             device_metrics (
-              body_length,
-              weight,
-              created_at
+              avg_body_length_cm,
+              avg_body_weight_g,
+              activity_level_pct,
+              recorded_at
             )
           `);
 
@@ -129,7 +118,7 @@ export default function WebGISMap() {
                 const formattedData: Device[] = (data || []).map((device: any) => {
                     // Sort device_metrics to get the latest one safely
                     const sortedMetrics = Array.isArray(device.device_metrics)
-                        ? [...device.device_metrics].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                        ? [...device.device_metrics].sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
                         : [];
 
                     return {
@@ -144,12 +133,15 @@ export default function WebGISMap() {
 
                 setDevices(formattedData);
 
-                // Auto-center map to first valid location initially
-                const firstValidLoc = formattedData.find(d => d.parsedLocation !== null);
-                if (firstValidLoc?.parsedLocation) {
-                    setActiveCenter(firstValidLoc.parsedLocation);
+                // Auto-center: prioritize target device from query param, else first valid
+                const targetDevice = targetDeviceId
+                    ? formattedData.find(d => d.id === targetDeviceId && d.parsedLocation !== null)
+                    : null;
+                const focusDevice = targetDevice || formattedData.find(d => d.parsedLocation !== null);
+                if (focusDevice?.parsedLocation) {
+                    setActiveCenter(focusDevice.parsedLocation);
                 } else {
-                    setActiveCenter([-2.5489, 118.0149]); // Default center string on Indonesia
+                    setActiveCenter([-2.5489, 118.0149]); // Default center on Indonesia
                 }
             } catch (err) {
                 console.error("Error fetching map data:", err);
@@ -176,6 +168,27 @@ export default function WebGISMap() {
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
             )}
+
+            <div className="absolute top-4 right-4 z-[500] flex bg-background/95 backdrop-blur-md border border-border/50 rounded-lg shadow-md overflow-hidden">
+                <button
+                    onClick={() => setMapType("normal")}
+                    className={`px-3 py-1.5 text-xs font-medium transition ${mapType === "normal"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted"
+                        }`}
+                >
+                    Normal
+                </button>
+                <button
+                    onClick={() => setMapType("satellite")}
+                    className={`px-3 py-1.5 text-xs font-medium transition ${mapType === "satellite"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted"
+                        }`}
+                >
+                    Satellite
+                </button>
+            </div>
 
             {/* Map Sidebar Overlay */}
             <div className="absolute top-4 left-4 z-[500] w-80 max-h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-md border border-border/50 rounded-xl shadow-lg shadow-black/5 overflow-hidden">
@@ -227,11 +240,11 @@ export default function WebGISMap() {
                                     <div className="mt-2 pt-2 border-t border-border/40 grid grid-cols-2 gap-2">
                                         <div className="text-[10px] text-muted-foreground">
                                             <span className="block mb-0.5">Length</span>
-                                            <span className="font-medium text-foreground">{latestMetric.body_length ?? '-'} mm</span>
+                                            <span className="font-medium text-foreground">{latestMetric.avg_body_length_cm ?? '-'} cm</span>
                                         </div>
                                         <div className="text-[10px] text-muted-foreground">
                                             <span className="block mb-0.5">Weight</span>
-                                            <span className="font-medium text-foreground">{latestMetric.weight ?? '-'} g</span>
+                                            <span className="font-medium text-foreground">{latestMetric.avg_body_weight_g ?? '-'} g</span>
                                         </div>
                                     </div>
                                 )}
@@ -251,12 +264,19 @@ export default function WebGISMap() {
             >
                 <MapController center={activeCenter} />
 
-                {/* CartoDB Positron - Clean, fast, and matches Shadcn aesthetic well */}
-                <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                    maxZoom={19}
-                />
+                {mapType === "normal" ? (
+                    <TileLayer
+                        attribution='&copy; OpenStreetMap & CARTO'
+                        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                        maxZoom={19}
+                    />
+                ) : (
+                    <TileLayer
+                        attribution='&copy; Esri &mdash; Source: Esri, Maxar'
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        maxZoom={19}
+                    />
+                )}
 
                 {devices.map(device => {
                     if (!device.parsedLocation) return null;
@@ -291,15 +311,15 @@ export default function WebGISMap() {
                                             <div className="grid grid-cols-2 gap-2 bg-muted/40 p-2 rounded-lg">
                                                 <div>
                                                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Length</p>
-                                                    <p className="font-semibold text-sm">{latestMetric.body_length ?? '-'} <span className="text-xs font-normal text-muted-foreground">mm</span></p>
+                                                    <p className="font-semibold text-sm">{latestMetric.avg_body_length_cm ?? '-'} <span className="text-xs font-normal text-muted-foreground">cm</span></p>
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Weight</p>
-                                                    <p className="font-semibold text-sm">{latestMetric.weight ?? '-'} <span className="text-xs font-normal text-muted-foreground">g</span></p>
+                                                    <p className="font-semibold text-sm">{latestMetric.avg_body_weight_g ?? '-'} <span className="text-xs font-normal text-muted-foreground">g</span></p>
                                                 </div>
                                             </div>
                                             <div className="text-[9px] text-right mt-1.5 text-muted-foreground/60">
-                                                Updated {new Date(latestMetric.created_at).toLocaleDateString()}
+                                                Updated {new Date(latestMetric.recorded_at).toLocaleDateString()}
                                             </div>
                                         </div>
                                     ) : (

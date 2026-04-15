@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Dynamically import the Map component, disabling SSR
@@ -22,7 +23,9 @@ const MapComponent = dynamic(
 export default function WebGISPage() {
     return (
         <div className="w-full h-[calc(100vh-4rem)]">
-            <MapComponent />
+            <Suspense>
+                <MapComponent />
+            </Suspense>
         </div>
     );
 }

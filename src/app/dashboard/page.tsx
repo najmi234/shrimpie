@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { motion } from "framer-motion"
-import { Ruler, Weight, Activity, Sparkles } from "lucide-react"
+import { Ruler, Weight, Activity, Sparkles, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -33,6 +33,7 @@ interface DeviceMetric {
 }
 
 interface DeviceStatus {
+  id: string
   name: string
   status: string
   location: string
@@ -281,7 +282,7 @@ export default function ShrimpMonitoringDashboard() {
                       <th className="pb-2 font-medium text-muted-foreground">Device</th>
                       <th className="pb-2 font-medium text-muted-foreground">Status</th>
                       <th className="pb-2 font-medium text-muted-foreground">Last Update</th>
-                      <th className="pb-2 font-medium text-muted-foreground">Location</th>
+                      <th className="pb-2 font-medium text-muted-foreground text-center">Map</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -305,7 +306,19 @@ export default function ShrimpMonitoringDashboard() {
                             </span>
                           </td>
                           <td className="py-2 text-muted-foreground">{device.last_update_at ? formatRecordedAt(device.last_update_at) : "-"}</td>
-                          <td className="py-2 text-muted-foreground">{device.location || "-"}</td>
+                          <td className="py-2 text-center">
+                            {device.location ? (
+                              <Link
+                                href={`/webgis?device=${device.id}`}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="View on map"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                   </tbody>
