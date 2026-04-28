@@ -123,10 +123,10 @@ export function Sidebar() {
                     <Link
                         href="/chat-agent"
                         className={linkClass("/chat-agent")}
-                        title="Chat Agent"
+                        title="AI Recommendation"
                     >
                         <MessageSquareText className="w-5 h-5 shrink-0" />
-                        {!collapsed && <span>Chat Agent</span>}
+                        {!collapsed && <span>AI Recommendation</span>}
                     </Link>
 
                     <Link

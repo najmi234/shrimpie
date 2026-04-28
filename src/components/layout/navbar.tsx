@@ -11,7 +11,7 @@ const pageTitles: Record<string, string> = {
     "/dashboard": "Dashboard",
     "/riwayat": "Riwayat Monitoring",
     "/webgis": "WebGIS Tracker",
-    "/chat-agent": "Chat Agent"
+    "/chat-agent": "AI Recommendation"
 }
 
 export function Navbar() {
@@ -61,14 +61,24 @@ export function Navbar() {
                 >
                     <Menu className="w-5 h-5" />
                 </button>
-                <h1 className="text-xl font-semibold sm:text-2xl">
+                <h1 className="text-xl font-semibold sm:text-2xl truncate">
                     {title}
                 </h1>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                {/* Search Bar Trigger */}
-                <div className="relative flex-1 sm:flex-none max-w-md sm:max-w-[200px] lg:max-w-xs w-full mr-2 sm:mr-0">
+                {/* Search Icon (Mobile) */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="sm:hidden rounded-full"
+                    onClick={() => setSearchOpen(true)}
+                >
+                    <Search className="w-5 h-5" />
+                </Button>
+
+                {/* Search Bar Trigger (Desktop) */}
+                <div className="relative hidden sm:block sm:max-w-[200px] lg:max-w-xs w-full">
                     <Button
                         variant="outline"
                         className="w-full justify-start text-sm text-muted-foreground h-9 rounded-full px-4 pr-1.5 bg-muted/50 border-border hover:bg-accent/50 group"

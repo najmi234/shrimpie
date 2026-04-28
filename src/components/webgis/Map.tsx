@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -12,7 +12,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Loader2, MapPin, Activity, Navigation } from "lucide-react";
+import { Loader2, MapPin, Activity, Navigation, PanelLeftClose, PanelLeftOpen, ChevronUp, ChevronDown, X } from "lucide-react";
 
 // Fix for default Leaflet icons in Webpack/Next.js
 const DefaultIcon = L.icon({
@@ -92,6 +92,7 @@ export default function WebGISMap() {
     const [loading, setLoading] = useState(true);
     const [activeCenter, setActiveCenter] = useState<[number, number] | null>(null);
     const [mapType, setMapType] = useState<"normal" | "satellite">("normal");
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const mapRef = useRef<L.Map>(null);
 
     useEffect(() => {
@@ -190,16 +191,53 @@ export default function WebGISMap() {
                 </button>
             </div>
 
-            {/* Map Sidebar Overlay */}
-            <div className="absolute top-4 left-4 z-[500] w-80 max-h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-md border border-border/50 rounded-xl shadow-lg shadow-black/5 overflow-hidden">
-                <div className="p-4 border-b border-border/50 bg-muted/30">
-                    <h2 className="text-sm font-semibold flex items-center gap-2">
-                        <Navigation className="w-4 h-4 text-primary" />
-                        Device Tracking
-                    </h2>
+            {/* ─── Desktop Sidebar Toggle Button ─── */}
+            <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="hidden md:flex absolute top-4 left-4 z-[501] w-9 h-9 items-center justify-center rounded-lg bg-background/95 backdrop-blur-md border border-border/50 shadow-md hover:bg-muted transition-colors"
+                style={{ left: sidebarOpen ? '21.5rem' : '1rem' }}
+                title={sidebarOpen ? 'Hide panel' : 'Show panel'}
+            >
+                {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+            </button>
+
+            {/* ─── Mobile Bottom Sheet Toggle ─── */}
+            <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="md:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-[501] flex items-center gap-2 px-4 py-2 rounded-full bg-background/95 backdrop-blur-md border border-border/50 shadow-lg hover:bg-muted transition-colors"
+            >
+                <Navigation className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium">Devices ({devices.length})</span>
+                {sidebarOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
+
+            {/* ─── Map Sidebar / Bottom Sheet ─── */}
+            <div
+                className={`absolute z-[500] bg-background/95 backdrop-blur-md border border-border/50 shadow-lg shadow-black/5 overflow-hidden transition-all duration-300 ease-in-out
+                    md:top-4 md:left-4 md:w-80 md:rounded-xl md:max-h-[calc(100%-2rem)] md:flex md:flex-col
+                    ${sidebarOpen
+                        ? 'bottom-0 left-0 right-0 max-h-[55vh] md:bottom-auto md:right-auto md:opacity-100 md:translate-x-0 rounded-t-2xl md:rounded-xl'
+                        : 'bottom-0 left-0 right-0 max-h-0 md:max-h-[calc(100%-2rem)] md:-translate-x-[calc(100%+2rem)] md:opacity-0 border-transparent'}
+                `}
+            >
+                {/* Header */}
+                <div className="p-4 border-b border-border/50 bg-muted/30 shrink-0">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-semibold flex items-center gap-2">
+                            <Navigation className="w-4 h-4 text-primary" />
+                            Device Tracking
+                        </h2>
+                        <button
+                            onClick={() => setSidebarOpen(false)}
+                            className="md:hidden p-1 rounded-md hover:bg-muted transition-colors"
+                        >
+                            <X className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                    </div>
                     <p className="text-xs text-muted-foreground mt-1">Real-time shrimp pond locations</p>
                 </div>
 
+                {/* Device List */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
                     {devices.length === 0 && !loading && (
                         <div className="p-4 text-center text-sm text-muted-foreground">
@@ -214,7 +252,7 @@ export default function WebGISMap() {
                         return (
                             <button
                                 key={device.id}
-                                onClick={() => handleFlyTo(device.parsedLocation)}
+                                onClick={() => { handleFlyTo(device.parsedLocation); if (window.innerWidth < 768) setSidebarOpen(false); }}
                                 disabled={!hasLocation}
                                 className={`w-full text-left p-3 rounded-lg border transition-all duration-200
                   ${!hasLocation ? 'opacity-50 cursor-not-allowed bg-muted/30 border-transparent' : 'bg-card hover:bg-accent hover:border-accent-foreground/20 cursor-pointer shadow-sm'}
