@@ -294,7 +294,7 @@ export default function ShrimpMonitoringDashboard() {
                       if (firstVideo) setSelectedVideoUrl(firstVideo.file_url)
                     }}
                   >
-                    <ComboboxInput placeholder="Select a Pond" />
+                    <ComboboxInput className="w-full bg-background border-border" placeholder="Select a Pond" />
                     <ComboboxContent>
                       <ComboboxEmpty>No ponds found.</ComboboxEmpty>
                       <ComboboxList>

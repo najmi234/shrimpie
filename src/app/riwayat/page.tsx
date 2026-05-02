@@ -261,7 +261,7 @@ export default function RiwayatPage() {
                             if (val !== null) setSelectedPondName(val)
                         }}
                     >
-                        <ComboboxInput placeholder="Pilih Kolam" />
+                        <ComboboxInput className="w-full bg-background border-border" placeholder="Pilih Kolam" />
                         <ComboboxContent>
                             <ComboboxEmpty>Kolam tidak ditemukan.</ComboboxEmpty>
                             <ComboboxList>
@@ -282,7 +282,7 @@ export default function RiwayatPage() {
                                 type="date"
                                 value={fromDate}
                                 onChange={(e) => setFromDate(e.target.value)}
-                                className="h-9 w-[150px] text-sm"
+                                className="h-9 w-[150px] text-sm border-border"
                             />
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -291,7 +291,7 @@ export default function RiwayatPage() {
                                 type="date"
                                 value={toDate}
                                 onChange={(e) => setToDate(e.target.value)}
-                                className="h-9 w-[150px] text-sm"
+                                className="h-9 w-[150px] text-sm border-border"
                             />
                         </div>
                     </div>

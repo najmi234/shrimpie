@@ -379,7 +379,7 @@ function ChatAgentContent() {
                                     setSelectedDeviceName(val)
                                 }}
                             >
-                                <ComboboxInput placeholder="Pilih Device" />
+                                <ComboboxInput className="w-full bg-background border-border" placeholder="Pilih Device" />
                                 <ComboboxContent>
                                     <ComboboxEmpty>
                                         Tidak ada device.

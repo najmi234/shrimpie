@@ -130,7 +130,7 @@ export function Sidebar() {
                     </Link>
 
                     <Link
-                        href="#"
+                        href="/settings"
                         className={linkClass("/settings")}
                         title="Settings"
                     >

@@ -11,7 +11,8 @@ const pageTitles: Record<string, string> = {
     "/dashboard": "Dashboard",
     "/riwayat": "Riwayat Monitoring",
     "/webgis": "WebGIS Tracker",
-    "/chat-agent": "AI Recommendation"
+    "/chat-agent": "AI Recommendation",
+    "/settings": "Settings"
 }
 
 export function Navbar() {
