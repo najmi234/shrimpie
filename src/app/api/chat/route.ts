@@ -78,18 +78,51 @@ export async function POST(req: Request) {
             );
         }
 
-        // System prompt with IoT data + RAG context
-        const systemPrompt = `Anda adalah "Shrimpie Advisor", seorang ahli akuakultur senior spesialis budidaya udang vaname (Litopenaeus vannamei). Tugas Anda adalah memberikan saran, diagnosis, dan rekomendasi terkait penanganan udang berdasarkan data IoT terkini, referensi dokumen pengetahuan, dan best practice (SOP) budidaya udang.
+        // ─── Build data pertumbuhan context from all metrics ─────────
+        const metricsHistory: Array<{
+            avg_body_weight_g: number;
+            avg_body_length_cm: number;
+            activity_level_pct: number;
+            recorded_at: string;
+        }> = parameters.metricsHistory ?? [];
 
-**Data IoT Kolam Saat Ini:**
+        let pertumbuhanDataSection = "";
+        if (metricsHistory.length > 0) {
+            // Latest reading
+            const latest = metricsHistory[metricsHistory.length - 1];
+            pertumbuhanDataSection += `**Data Pertumbuhan Udang Terkini (${new Date(latest.recorded_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}):**
+- Rata-rata Berat Udang: ${latest.avg_body_weight_g} gram
+- Rata-rata Panjang Udang: ${latest.avg_body_length_cm} cm
+- Tingkat Keaktifan: ${latest.activity_level_pct}%
+
+**Riwayat Seluruh Data Pertumbuhan Device (${metricsHistory.length} data, diurutkan dari terlama ke terbaru):**
+| No | Waktu Pencatatan | Berat (g) | Panjang (cm) | Keaktifan (%) |
+|----|-----------------|-----------|-------------|--------------|
+`;
+            metricsHistory.forEach((m, i) => {
+                const date = new Date(m.recorded_at).toLocaleString("id-ID", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                });
+                pertumbuhanDataSection += `| ${i + 1} | ${date} | ${m.avg_body_weight_g} | ${m.avg_body_length_cm} | ${m.activity_level_pct} |\n`;
+            });
+        } else {
+            // Fallback to single parameters if no history available
+            pertumbuhanDataSection = `**Data Pertumbuhan Udang Saat Ini:**
 - Rata-rata Berat Udang: ${parameters.avg_weight} gram
 - Rata-rata Panjang Udang: ${parameters.avg_length} cm
-- Tingkat Keaktifan: ${parameters.activity_level}%
+- Tingkat Keaktifan: ${parameters.activity_level}%`;
+        }
+
+        // System prompt with Pertumbuhan data + RAG context
+        const systemPrompt = `Anda adalah "Shrimpie Advisor", seorang ahli akuakultur senior spesialis budidaya udang vaname (Litopenaeus vannamei). Tugas Anda adalah memberikan saran, diagnosis, dan rekomendasi terkait penanganan udang berdasarkan data Pertumbuhan terkini, referensi dokumen pengetahuan, dan best practice (SOP) budidaya udang.
+
+${pertumbuhanDataSection}
 ${ragContext}
 
 **Aturan Penjawab:**
 1. Gunakan bahasa Indonesia yang profesional namun ramah dan mudah dipahami oleh petambak.
-2. Selalu kaitkan jawaban Anda dengan data IoT saat ini jika relevan. Misalnya, jika berat di bawah 15 gram di umur tertentu, berikan saran pakan. Jika keaktifan di bawah 70%, sarankan cek DO (Dissolved Oxygen) atau aerator.
+2. Selalu kaitkan jawaban Anda dengan data Pertumbuhan saat ini jika relevan. Misalnya, jika berat di bawah 15 gram di umur tertentu, berikan saran pakan. Jika keaktifan di bawah rata-rata, sarankan cek DO (Dissolved Oxygen) atau aerator.
 3. Jika ada referensi dokumen pengetahuan yang relevan, gunakan informasi tersebut untuk memperkuat jawaban Anda. Sebutkan bahwa rekomendasi didasarkan pada dokumen/SOP yang ada.
 4. Berikan rekomendasi yang praktis dan actionable (bisa langsung diterapkan).
 5. Gunakan format Markdown (seperti bullet points, bold text, atau tabel jika perlu membandingkan nilai) agar mudah dibaca.

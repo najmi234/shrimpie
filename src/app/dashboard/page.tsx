@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { motion } from "framer-motion"
-import { Ruler, Weight, Activity, Sparkles, ExternalLink } from "lucide-react"
+import { Ruler, Weight, Activity, Sparkles, ExternalLink, Lightbulb } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -18,26 +18,86 @@ import {
 } from "@/components/ui/combobox"
 
 interface VideoEntry {
-  device_id: string
-  device_name: string
+  pond_id: string
+  pond_name: string
   file_url: string
   recorded_at: string
 }
 
-interface DeviceMetric {
-  device_id: string
+interface PondMetric {
+  pond_id: string
   avg_body_length_cm: number
   avg_body_weight_g: number
   activity_level_pct: number
   recorded_at: string
 }
 
-interface DeviceStatus {
-  id: string
-  name: string
-  status: string
-  location: string
-  last_update_at: string
+// ---------- Feeding Program SOP ----------
+
+interface FeedingStage {
+  docMin: number
+  docMax: number
+  weightMin: number
+  weightMax: number
+  lengthMin: number
+  lengthMax: number
+  feedingRate: string
+  feedFrequency: string
+  phase: string
+}
+
+const feedingStages: FeedingStage[] = [
+  { docMin: 1, docMax: 10, weightMin: 0, weightMax: 0.1, lengthMin: 0.6, lengthMax: 1.2, feedingRate: "-", feedFrequency: "3x/hari", phase: "Blind Feeding" },
+  { docMin: 11, docMax: 20, weightMin: 0.1, weightMax: 1.5, lengthMin: 1.2, lengthMax: 2.0, feedingRate: "-", feedFrequency: "3x/hari", phase: "Blind Feeding" },
+  { docMin: 21, docMax: 30, weightMin: 1.5, weightMax: 2.5, lengthMin: 2.0, lengthMax: 3.5, feedingRate: "-", feedFrequency: "4x/hari", phase: "Blind Feeding" },
+  { docMin: 30, docMax: 40, weightMin: 2.5, weightMax: 3.5, lengthMin: 3.5, lengthMax: 5.5, feedingRate: "5.8–4.8%", feedFrequency: "4x/hari", phase: "Kontrol Ancho" },
+  { docMin: 40, docMax: 60, weightMin: 3.5, weightMax: 8.0, lengthMin: 5.5, lengthMax: 6.5, feedingRate: "4.8–3.2%", feedFrequency: "4–5x/hari", phase: "Kontrol Ancho" },
+  { docMin: 60, docMax: 80, weightMin: 8.0, weightMax: 12.5, lengthMin: 6.5, lengthMax: 8.5, feedingRate: "3.2–2.6%", feedFrequency: "5x/hari", phase: "Kontrol Ancho" },
+  { docMin: 80, docMax: 100, weightMin: 12.5, weightMax: 17.5, lengthMin: 8.5, lengthMax: 10.0, feedingRate: "2.6–2.2%", feedFrequency: "5x/hari", phase: "Kontrol Ancho" },
+  { docMin: 100, docMax: 120, weightMin: 17.5, weightMax: 22.0, lengthMin: 10.0, lengthMax: 11.5, feedingRate: "2.2–1.8%", feedFrequency: "5–6x/hari", phase: "Kontrol Ancho" },
+  { docMin: 120, docMax: 999, weightMin: 22.0, weightMax: 999, lengthMin: 11.5, lengthMax: 999, feedingRate: "≤1.8%", feedFrequency: "6x/hari", phase: "Kontrol Ancho" },
+]
+
+function getHandlingRecommendation(doc: number | null, weight: number, length: number, activity: number): string {
+  if (doc === null) return "Data stocking_date belum tersedia untuk kolam ini. Silakan isi tanggal tebar di database."
+
+  const stage = feedingStages.find((s) => doc >= s.docMin && doc <= s.docMax)
+  if (!stage) return "DOC di luar jangkauan program pakan."
+
+  const lines: string[] = []
+  lines.push(`📅 DOC ${doc} — Fase ${stage.phase}`)
+  lines.push(`🍤 Frekuensi pakan: ${stage.feedFrequency}${stage.feedingRate !== "-" ? ` | Feeding rate: ${stage.feedingRate}` : ""}`)
+
+  // Check weight
+  if (weight < stage.weightMin) {
+    lines.push(`⚠️ Berat (${weight}g) di bawah target (${stage.weightMin}–${stage.weightMax}g). Pertimbangkan tingkatkan kualitas pakan dan cek kualitas air.`)
+  } else if (weight > stage.weightMax) {
+    lines.push(`✅ Berat (${weight}g) melebihi target (${stage.weightMin}–${stage.weightMax}g). Pertumbuhan sangat baik.`)
+  } else {
+    lines.push(`✅ Berat (${weight}g) sesuai target (${stage.weightMin}–${stage.weightMax}g).`)
+  }
+
+  // Check length
+  if (length < stage.lengthMin) {
+    lines.push(`⚠️ Panjang (${length}cm) di bawah target (${stage.lengthMin}–${stage.lengthMax}cm). Evaluasi nutrisi pakan.`)
+  } else if (length > stage.lengthMax) {
+    lines.push(`✅ Panjang (${length}cm) melebihi target (${stage.lengthMin}–${stage.lengthMax}cm).`)
+  } else {
+    lines.push(`✅ Panjang (${length}cm) sesuai target (${stage.lengthMin}–${stage.lengthMax}cm).`)
+  }
+
+  // Check activity level
+  if (activity < 3) {
+    lines.push(`🚨 Aktivitas (${activity} px/s) sangat rendah. Segera cek kualitas air (DO, pH, salinitas) dan pastikan aerasi berjalan optimal. Kurangi porsi pakan sementara.`)
+  } else if (activity < 5) {
+    lines.push(`⚠️ Aktivitas (${activity} px/s) cukup rendah. Pantau kualitas air dan perhatikan tanda-tanda stres pada udang.`)
+  } else if (activity > 15) {
+    lines.push(`⚠️ Aktivitas (${activity} px/s) sangat tinggi. Kemungkinan udang stres atau ada perubahan lingkungan mendadak. Periksa suhu dan parameter air.`)
+  } else {
+    lines.push(`✅ Aktivitas (${activity} px/s) normal.`)
+  }
+
+  return lines.join("\n")
 }
 
 function formatRecordedAt(recorded_at: string) {
@@ -53,35 +113,35 @@ function formatRecordedAt(recorded_at: string) {
 export default function ShrimpMonitoringDashboard() {
   const supabase = createClient()
   const [videos, setVideos] = useState<VideoEntry[]>([])
-  const [selectedDeviceName, setSelectedDeviceName] = useState<string>("")
+  const [selectedPondName, setSelectedPondName] = useState<string>("")
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string>("")
-  const [metrics, setMetrics] = useState<DeviceMetric[]>([])
+  const [metrics, setMetrics] = useState<PondMetric[]>([])
+  const [stockingDate, setStockingDate] = useState<string | null>(null)
 
-  const [deviceStatus, setDeviceStatus] = useState<DeviceStatus[]>([])
 
-  // Derive unique device names from API data
-  const devices = useMemo(() => {
-    const unique = [...new Set(videos.map((v) => v.device_name))]
+  // Derive unique pond names from API data
+  const ponds = useMemo(() => {
+    const unique = [...new Set(videos.map((v) => v.pond_name))]
     return unique as readonly string[]
   }, [videos])
 
-  // Map device_name to device_id for metrics query
-  const deviceIdMap = useMemo(() => {
+  // Map pond_name to pond_id for metrics query
+  const pondIdMap = useMemo(() => {
     const map: Record<string, string> = {}
     videos.forEach((v) => {
-      if (!map[v.device_name]) map[v.device_name] = v.device_id
+      if (!map[v.pond_name]) map[v.pond_name] = v.pond_id
     })
     return map
   }, [videos])
 
-  // Get device_id for metrics query
-  const selectedDeviceId = deviceIdMap[selectedDeviceName] || ""
+  // Get pond_id for metrics query
+  const selectedPondId = pondIdMap[selectedPondName] || ""
 
-  // Filter videos by selected device name
+  // Filter videos by selected pond name
   const filteredVideos = useMemo(() => {
-    if (!selectedDeviceName) return videos
-    return videos.filter((v) => v.device_name === selectedDeviceName)
-  }, [videos, selectedDeviceName])
+    if (!selectedPondName) return videos
+    return videos.filter((v) => v.pond_name === selectedPondName)
+  }, [videos, selectedPondName])
 
   // Fetch videos from API
   useEffect(() => {
@@ -91,7 +151,7 @@ export default function ShrimpMonitoringDashboard() {
         const data: VideoEntry[] = await res.json()
         setVideos(data)
         if (data.length > 0) {
-          setSelectedDeviceName(data[0].device_name)
+          setSelectedPondName(data[0].pond_name)
           setSelectedVideoUrl(data[0].file_url)
         }
       } catch (err) {
@@ -101,28 +161,47 @@ export default function ShrimpMonitoringDashboard() {
     fetchVideos()
   }, [])
 
-  // Fetch device metrics from Supabase using device_id
+  // Fetch stocking_date for selected pond
   useEffect(() => {
-    if (!selectedDeviceId) return
+    if (!selectedPondId) return
+    async function fetchStockingDate() {
+      const { data, error } = await supabase
+        .from("ponds")
+        .select("stocking_date")
+        .eq("id", selectedPondId)
+        .single()
+      if (error) {
+        console.error("Failed to fetch stocking_date:", error)
+        setStockingDate(null)
+        return
+      }
+      setStockingDate(data?.stocking_date ?? null)
+    }
+    fetchStockingDate()
+  }, [selectedPondId])
+
+  // Fetch pond metrics from Supabase using pond_id
+  useEffect(() => {
+    if (!selectedPondId) return
     async function fetchMetrics() {
       const { data, error } = await supabase
-        .from("device_metrics")
+        .from("pond_metrics")
         .select("*")
-        .eq("device_id", selectedDeviceId)
+        .eq("pond_id", selectedPondId)
         .order("recorded_at", { ascending: true })
       console.log("[DEBUG] metrics fetch result:", { data, error })
       if (error) {
-        console.error("Failed to fetch device metrics:", error)
+        console.error("Failed to fetch pond metrics:", error)
         return
       }
       setMetrics(data ?? [])
     }
     fetchMetrics()
-  }, [selectedDeviceId])
+  }, [selectedPondId])
 
   // Build cards from metrics data
   const cards = useMemo(() => {
-    console.log("selectedDeviceId:", selectedDeviceId)
+    console.log("selectedPondId:", selectedPondId)
     console.log("[DEBUG] metrics state:", metrics.length, "rows", metrics.slice(0, 2))
     const latestMetric = metrics.length > 0 ? metrics[metrics.length - 1] : null
     return [
@@ -141,31 +220,29 @@ export default function ShrimpMonitoringDashboard() {
         icon: Weight,
       },
       {
-        title: "Activity Level (%)",
+        title: "Activity Level (px/s)",
         value: latestMetric?.activity_level_pct ?? 0,
         data: metrics.map((m) => ({ time: formatRecordedAt(m.recorded_at), value: m.activity_level_pct })),
         color: "#6366f1",
         icon: Activity,
       },
     ]
-  }, [metrics])
+  }, [metrics, selectedPondId])
 
-  // Fetch device status from Supabase
-  useEffect(() => {
-    async function fetchDeviceStatus() {
-      const { data, error } = await supabase
-        .from("devices")
-        .select("*")
-      console.log("[DEBUG] devices fetch error:", error)
-      console.log("[DEBUG] devices fetch data:", JSON.stringify(data, null, 2))
-      if (error) {
-        console.error("Failed to fetch device status:", error)
-        return
-      }
-      setDeviceStatus(data ?? [])
-    }
-    fetchDeviceStatus()
-  }, [])
+  // Calculate DOC and recommendation
+  const doc = useMemo(() => {
+    if (!stockingDate) return null
+    const stocking = new Date(stockingDate)
+    const now = new Date()
+    return Math.floor((now.getTime() - stocking.getTime()) / (1000 * 60 * 60 * 24))
+  }, [stockingDate])
+
+  const recommendation = useMemo(() => {
+    if (metrics.length === 0) return null
+    const latest = metrics[metrics.length - 1]
+    return getHandlingRecommendation(doc, latest.avg_body_weight_g, latest.avg_body_length_cm, latest.activity_level_pct)
+  }, [metrics, doc])
+
 
   return (
     <div className="container mx-auto space-y-8">
@@ -206,20 +283,20 @@ export default function ShrimpMonitoringDashboard() {
             <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow h-full flex flex-col min-h-0">
               <CardContent className="p-6 flex flex-col gap-3 h-full min-h-0">
                 <div className="shrink-0">
-                  <h2 className="text-xl font-semibold mb-3 text-foreground">Select Device</h2>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">Select Pond</h2>
                   <Combobox
-                    items={devices}
-                    value={selectedDeviceName}
+                    items={ponds}
+                    value={selectedPondName}
                     onValueChange={(val) => {
                       if (val === null) return
-                      setSelectedDeviceName(val)
-                      const firstVideo = videos.find((v) => v.device_name === val)
+                      setSelectedPondName(val)
+                      const firstVideo = videos.find((v) => v.pond_name === val)
                       if (firstVideo) setSelectedVideoUrl(firstVideo.file_url)
                     }}
                   >
-                    <ComboboxInput placeholder="Select a Device" />
+                    <ComboboxInput placeholder="Select a Pond" />
                     <ComboboxContent>
-                      <ComboboxEmpty>No devices found.</ComboboxEmpty>
+                      <ComboboxEmpty>No ponds found.</ComboboxEmpty>
                       <ComboboxList>
                         {(item) => (
                           <ComboboxItem key={item} value={item}>
@@ -264,65 +341,30 @@ export default function ShrimpMonitoringDashboard() {
         </motion.div>
       </div>
 
-      {/* Device Status Table + Realtime Cards */}
+      {/* Handling Recommendation + Realtime Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
-        {/* Device Status Table - spans 2 columns */}
+        {/* Handling Recommendation Card - spans 2 columns */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="xl:col-span-2 md:col-span-2"
         >
           <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-4 flex flex-col h-[208px]">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Device Status</h3>
-              <div className="overflow-auto flex-1">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <th className="pb-2 font-medium text-muted-foreground">Device</th>
-                      <th className="pb-2 font-medium text-muted-foreground">Status</th>
-                      <th className="pb-2 font-medium text-muted-foreground">Last Update</th>
-                      <th className="pb-2 font-medium text-muted-foreground text-center">Map</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...deviceStatus]
-                      .sort((a, b) => {
-                        const numA = parseInt(a.name.match(/\d+/)?.[0] || "0")
-                        const numB = parseInt(b.name.match(/\d+/)?.[0] || "0")
-                        return numA - numB
-                      })
-                      .map((device) => (
-                        <tr key={device.name} className="border-b border-border/50 last:border-0">
-                          <td className="py-2 font-medium text-foreground">{device.name}</td>
-                          <td className="py-2">
-                            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${device.status === "Active"
-                              ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                              : "bg-red-500/10 text-red-600 dark:text-red-400"
-                              }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${device.status === "Active" ? "bg-green-500" : "bg-red-500"
-                                }`} />
-                              {device.status}
-                            </span>
-                          </td>
-                          <td className="py-2 text-muted-foreground">{device.last_update_at ? formatRecordedAt(device.last_update_at) : "-"}</td>
-                          <td className="py-2 text-center">
-                            {device.location ? (
-                              <Link
-                                href={`/webgis?device=${device.id}`}
-                                className="inline-flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                title="View on map"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </Link>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+            <CardContent className="p-5 flex flex-col h-[208px]">
+              <div className="flex items-center gap-2 mb-3">
+                <Lightbulb className="w-5 h-5 text-amber-500" />
+                <h3 className="text-sm font-semibold text-foreground">Handling Recommendation</h3>
+              </div>
+              <div className="flex-1 overflow-auto bg-blue-50/50 dark:bg-blue-950/20 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30 custom-scrollbar">
+                {recommendation ? (
+                  <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
+                    {recommendation}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic flex h-full items-center justify-center">
+                    Belum ada data metrik untuk kolam ini.
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -40,19 +40,12 @@ const createCustomIcon = (status: string) => {
     });
 };
 
-interface DeviceMetric {
-    avg_body_length_cm: number | null;
-    avg_body_weight_g: number | null;
-    activity_level_pct: number | null;
-    recorded_at: string;
-}
-
 interface Device {
     id: string;
     name: string;
     status: string;
     location: any;
-    device_metrics: DeviceMetric[];
+    last_update_at: string;
     parsedLocation: [number, number] | null;
 }
 
@@ -102,34 +95,25 @@ export default function WebGISMap() {
 
                 // Fetch devices and their latest metrics
                 const { data, error } = await supabase
-                    .from("devices")
-                    .select(`
-            id, name, status, location,
-            device_metrics (
-              avg_body_length_cm,
-              avg_body_weight_g,
-              activity_level_pct,
-              recorded_at
-            )
-          `);
+                    .from("device_status_monitor")
+                    .select("id, name, status, location, last_update_at");
 
                 if (error) throw error;
 
-                // Process locations and sort metrics
+                // Process locations
                 const formattedData: Device[] = (data || []).map((device: any) => {
-                    // Sort device_metrics to get the latest one safely
-                    const sortedMetrics = Array.isArray(device.device_metrics)
-                        ? [...device.device_metrics].sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
-                        : [];
-
                     return {
                         id: device.id,
                         name: device.name,
                         status: device.status,
                         location: device.location,
-                        device_metrics: sortedMetrics,
+                        last_update_at: device.last_update_at,
                         parsedLocation: parseLocation(device.location)
                     };
+                }).sort((a, b) => {
+                    const numA = parseInt(a.name.match(/\d+/)?.[0] || "0");
+                    const numB = parseInt(b.name.match(/\d+/)?.[0] || "0");
+                    return numA - numB;
                 });
 
                 setDevices(formattedData);
@@ -247,7 +231,6 @@ export default function WebGISMap() {
 
                     {devices.map((device) => {
                         const hasLocation = device.parsedLocation !== null;
-                        const latestMetric = device.device_metrics?.[0];
 
                         return (
                             <button
@@ -272,20 +255,11 @@ export default function WebGISMap() {
                                             <span className="text-xs text-muted-foreground capitalize">{device.status || 'Unknown'}</span>
                                         </div>
                                     </div>
-                                </div>
-
-                                {latestMetric && (
-                                    <div className="mt-2 pt-2 border-t border-border/40 grid grid-cols-2 gap-2">
-                                        <div className="text-[10px] text-muted-foreground">
-                                            <span className="block mb-0.5">Length</span>
-                                            <span className="font-medium text-foreground">{latestMetric.avg_body_length_cm ?? '-'} cm</span>
-                                        </div>
-                                        <div className="text-[10px] text-muted-foreground">
-                                            <span className="block mb-0.5">Weight</span>
-                                            <span className="font-medium text-foreground">{latestMetric.avg_body_weight_g ?? '-'} g</span>
-                                        </div>
+                                    <div className="text-right flex flex-col items-end">
+                                        <span className="text-[10px] text-muted-foreground">Last Update</span>
+                                        <span className="text-[10px] font-medium text-foreground">{device.last_update_at ? new Date(device.last_update_at).toLocaleString('id-ID', {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}) : '-'}</span>
                                     </div>
-                                )}
+                                </div>
                             </button>
                         );
                     })}
@@ -319,8 +293,6 @@ export default function WebGISMap() {
                 {devices.map(device => {
                     if (!device.parsedLocation) return null;
 
-                    const latestMetric = device.device_metrics?.[0];
-
                     return (
                         <Marker
                             key={device.id}
@@ -340,31 +312,16 @@ export default function WebGISMap() {
                                         </span>
                                     </div>
 
-                                    {latestMetric ? (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                                                <Activity className="w-3.5 h-3.5" />
-                                                Latest Metrics
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2 bg-muted/40 p-2 rounded-lg">
-                                                <div>
-                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Length</p>
-                                                    <p className="font-semibold text-sm">{latestMetric.avg_body_length_cm ?? '-'} <span className="text-xs font-normal text-muted-foreground">cm</span></p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Weight</p>
-                                                    <p className="font-semibold text-sm">{latestMetric.avg_body_weight_g ?? '-'} <span className="text-xs font-normal text-muted-foreground">g</span></p>
-                                                </div>
-                                            </div>
-                                            <div className="text-[9px] text-right mt-1.5 text-muted-foreground/60">
-                                                Updated {new Date(latestMetric.recorded_at).toLocaleDateString()}
-                                            </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                                            <Activity className="w-3.5 h-3.5" />
+                                            Status Info
                                         </div>
-                                    ) : (
-                                        <div className="text-xs text-muted-foreground italic py-2 text-center">
-                                            No metrics available
+                                        <div className="bg-muted/40 p-2 rounded-lg text-xs">
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Last Updated</p>
+                                            <p className="font-medium text-foreground">{device.last_update_at ? new Date(device.last_update_at).toLocaleString('id-ID', {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}) : 'N/A'}</p>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
                             </Popup>
                         </Marker>
