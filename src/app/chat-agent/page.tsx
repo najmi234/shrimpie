@@ -39,6 +39,7 @@ interface PondMetric {
 interface PondOption {
     id: string
     name: string
+    stocking_date: string | null
 }
 
 function ChatAgentContent() {
@@ -137,7 +138,7 @@ function ChatAgentContent() {
         async function fetchPonds() {
             const { data, error } = await supabase
                 .from("ponds")
-                .select("id, name")
+                .select("id, name, stocking_date")
                 .order("name")
             if (error) {
                 console.error("Failed to fetch ponds:", error)
@@ -177,6 +178,21 @@ function ChatAgentContent() {
         fetchMetrics()
     }, [selectedPondId])
 
+    // Get stocking date of selected pond
+    const selectedPond = pondList.find((p) => p.id === selectedPondId)
+    const stockingDate = selectedPond?.stocking_date ?? null
+
+    // Calculate DOC
+    const doc = useMemo(() => {
+        if (!stockingDate) return null
+        const stocking = new Date(stockingDate)
+        const now = new Date()
+        const diffDays = Math.floor(
+            (now.getTime() - stocking.getTime()) / (1000 * 60 * 60 * 24)
+        )
+        return diffDays >= 0 ? diffDays : null
+    }, [stockingDate])
+
     // Build parameters from latest metric
     const latestMetric =
         metrics.length > 0 ? metrics[metrics.length - 1] : null
@@ -186,6 +202,8 @@ function ChatAgentContent() {
         activity_level: latestMetric?.activity_level_pct ?? 0,
         pondName: selectedPondName || undefined,
         metricsHistory: metrics,
+        doc: doc ?? undefined,
+        stocking_date: stockingDate ?? undefined,
     }
 
     // ─── Conversation handlers ──────────────────────────────

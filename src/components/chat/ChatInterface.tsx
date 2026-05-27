@@ -12,6 +12,8 @@ import {
     Ruler,
     Clock,
     Circle,
+    AlertCircle,
+    RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +40,8 @@ export interface PondParameters {
     activity_level: number;
     pondName?: string;
     metricsHistory?: PondMetric[];
+    doc?: number;
+    stocking_date?: string;
 }
 
 interface ChatMessage {
@@ -45,6 +49,7 @@ interface ChatMessage {
     role: "user" | "assistant" | "system";
     content: string;
     createdAt: Date;
+    isError?: boolean;
 }
 
 interface ChatInterfaceProps {
@@ -91,6 +96,7 @@ function formatDate(dateStr: string) {
 }
 
 function buildWelcomeMessage(parameters: PondParameters): ChatMessage {
+    const docText = parameters.doc !== undefined && parameters.doc !== null ? `\n- Umur Udang (DOC): **${parameters.doc} hari**` : "";
     return {
         id: "welcome",
         role: "assistant",
@@ -99,7 +105,7 @@ function buildWelcomeMessage(parameters: PondParameters): ChatMessage {
 **Parameter Kolam Saat Ini:**
 - Rata-rata Berat: **${parameters.avg_weight.toFixed(1)} gram**
 - Rata-rata Panjang: **${parameters.avg_length.toFixed(1)} cm**
-- Tingkat Keaktifan: **${parameters.activity_level.toFixed(1)} px/s**
+- Tingkat Keaktifan: **${parameters.activity_level.toFixed(1)}%**${docText}
 
 Ada yang bisa saya bantu terkait penanganan udang Anda hari ini?`,
         createdAt: new Date(),
@@ -163,6 +169,8 @@ export default function ChatInterface({
         parameters.avg_length,
         parameters.activity_level,
         parameters.pondName,
+        parameters.doc,
+        parameters.stocking_date,
     ]);
 
     // Auto-scroll to bottom of chat
@@ -174,82 +182,36 @@ export default function ChatInterface({
         scrollToBottom();
     }, [messages, scrollToBottom]);
 
-    const handleSendMessage = async () => {
-        if (!input.trim() || isLoading) return;
-
-        const userContent = input.trim();
-        const userMessage: ChatMessage = {
-            id: Date.now().toString(),
-            role: "user",
-            content: userContent,
-            createdAt: new Date(),
-        };
-
-        setMessages((prev) => [...prev, userMessage]);
-        setInput("");
+    const streamAIResponse = async (userContent: string, assistantId: string, currentActiveConvId: string | null, customHistory?: ChatMessage[]) => {
         setIsLoading(true);
-
-        // ─── Ensure conversation exists ─────────────────────
-        let activeConversationId = conversationId;
-
-        if (!activeConversationId && userId) {
-            // Create a new conversation
-            const title =
-                userContent.length > 60
-                    ? userContent.slice(0, 60) + "..."
-                    : userContent;
-            const conv = await createConversation(
-                userId,
-                undefined,
-                parameters.pondName,
-                title
-            );
-            if (conv) {
-                activeConversationId = conv.id;
-                onConversationCreated(conv.id, title);
-            }
-        }
-
-        // ─── Save user message to database ──────────────────
-        if (activeConversationId) {
-            await saveMessage(activeConversationId, "user", userContent);
-        }
-
-        // ─── Stream AI response ─────────────────────────────
-        const assistantId = (Date.now() + 1).toString();
-        setMessages((prev) => [
-            ...prev,
-            {
-                id: assistantId,
-                role: "assistant",
-                content: "",
-                createdAt: new Date(),
-            },
-        ]);
         setIsStreaming(true);
 
         const abortController = new AbortController();
         abortControllerRef.current = abortController;
 
         try {
-            const allMessages = messages
-                .filter((m) => m.id !== "welcome")
-                .map((m) => ({ role: m.role, content: m.content }))
-                .concat({ role: "user", content: userContent });
+            const baseHistory = customHistory || messages;
+            const allMessages = baseHistory
+                .filter((m) => m.id !== "welcome" && m.id !== assistantId)
+                .map((m) => ({ role: m.role, content: m.content }));
+
+            const hasUserMsg = allMessages.length > 0 && allMessages[allMessages.length - 1].role === "user" && allMessages[allMessages.length - 1].content === userContent;
+            const finalPayloadMessages = hasUserMsg ? allMessages : allMessages.concat({ role: "user", content: userContent });
 
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    messages: allMessages,
+                    messages: finalPayloadMessages,
                     parameters: parameters,
-                    conversationId: activeConversationId,
+                    conversationId: currentActiveConvId,
                 }),
                 signal: abortController.signal,
             });
 
             if (!response.ok) {
-                throw new Error("Failed to send message");
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || "Gagal menghubungi server.");
             }
 
             const reader = response.body!.getReader();
@@ -263,9 +225,7 @@ export default function ChatInterface({
 
                 buffer += decoder.decode(value, { stream: true });
 
-                // Process complete SSE lines from the buffer
                 const lines = buffer.split("\n");
-                // Keep the last potentially incomplete line in the buffer
                 buffer = lines.pop() || "";
 
                 for (const line of lines) {
@@ -285,18 +245,17 @@ export default function ChatInterface({
                             setMessages((prev) =>
                                 prev.map((m) =>
                                     m.id === assistantId
-                                        ? { ...m, content: fullText }
+                                        ? { ...m, content: fullText, isError: false }
                                         : m
                                 )
                             );
                         }
-                    } catch {
-                        // Skip malformed JSON
+                    } catch (e: any) {
+                        if (e.message) throw e;
                     }
                 }
             }
 
-            // Handle any remaining data in the buffer
             if (buffer.trim().startsWith("data: ")) {
                 const payload = buffer.trim().slice(6);
                 if (payload !== "[DONE]") {
@@ -307,7 +266,7 @@ export default function ChatInterface({
                             setMessages((prev) =>
                                 prev.map((m) =>
                                     m.id === assistantId
-                                        ? { ...m, content: fullText }
+                                        ? { ...m, content: fullText, isError: false }
                                         : m
                                 )
                             );
@@ -318,15 +277,14 @@ export default function ChatInterface({
                 }
             }
 
-            // If no text was received, show fallback
             if (!fullText) {
                 setMessages((prev) =>
                     prev.map((m) =>
                         m.id === assistantId
                             ? {
                                 ...m,
-                                content:
-                                    "Maaf, terjadi kesalahan saat memproses permintaan Anda.",
+                                content: "Maaf, terjadi kesalahan saat memproses permintaan Anda.",
+                                isError: true,
                             }
                             : m
                     )
@@ -341,8 +299,8 @@ export default function ChatInterface({
                     m.id === assistantId
                         ? {
                             ...m,
-                            content:
-                                "Maaf, sistem sedang mengalami gangguan. Silakan coba beberapa saat lagi.",
+                            content: error.message || "Maaf, sistem sedang mengalami gangguan. Silakan coba beberapa saat lagi.",
+                            isError: true,
                         }
                         : m
                 )
@@ -352,6 +310,80 @@ export default function ChatInterface({
             setIsStreaming(false);
             abortControllerRef.current = null;
         }
+    };
+
+    const handleSendMessage = async () => {
+        if (!input.trim() || isLoading) return;
+
+        const userContent = input.trim();
+        const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            role: "user",
+            content: userContent,
+            createdAt: new Date(),
+        };
+
+        const updatedMessages = [...messages, userMessage];
+        setMessages(updatedMessages);
+        setInput("");
+        setIsLoading(true);
+
+        // ─── Ensure conversation exists ─────────────────────
+        let activeConversationId = conversationId;
+
+        if (!activeConversationId && userId) {
+            const title =
+                userContent.length > 60
+                    ? userContent.slice(0, 60) + "..."
+                    : userContent;
+            const conv = await createConversation(
+                userId,
+                undefined,
+                parameters.pondName,
+                title
+            );
+            if (conv) {
+                activeConversationId = conv.id;
+                onConversationCreated(conv.id, title);
+            }
+        }
+
+        if (activeConversationId) {
+            await saveMessage(activeConversationId, "user", userContent);
+        }
+
+        const assistantId = (Date.now() + 1).toString();
+        setMessages((prev) => [
+            ...prev,
+            {
+                id: assistantId,
+                role: "assistant",
+                content: "",
+                createdAt: new Date(),
+            },
+        ]);
+
+        await streamAIResponse(userContent, assistantId, activeConversationId, updatedMessages);
+    };
+
+    const handleRetryMessage = async (assistantId: string) => {
+        if (isLoading) return;
+
+        const assistantIdx = messages.findIndex((m) => m.id === assistantId);
+        if (assistantIdx === -1) return;
+
+        const userMessage = messages.slice(0, assistantIdx).reverse().find((m) => m.role === "user");
+        if (!userMessage) return;
+
+        setMessages((prev) =>
+            prev.map((m) =>
+                m.id === assistantId
+                    ? { ...m, content: "", isError: false }
+                    : m
+            )
+        );
+
+        await streamAIResponse(userMessage.content, assistantId, conversationId, messages);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -469,6 +501,21 @@ export default function ChatInterface({
                                         </ReactMarkdown>
                                     )}
                                 </div>
+                                {message.role === "assistant" && message.isError && (
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                                        <span className="text-[11px] text-destructive font-medium">Gagal memproses rekomendasi.</span>
+                                        <Button
+                                            onClick={() => handleRetryMessage(message.id)}
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-7 px-2 text-xs gap-1 hover:bg-destructive/10 text-destructive hover:text-destructive shrink-0 rounded-md"
+                                        >
+                                            <RotateCcw className="w-3 h-3" />
+                                            Coba Lagi
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}

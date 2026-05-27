@@ -18,8 +18,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { PDFParse } from "pdf-parse";
 
 // ─── Config ───────────────────────────────────────────────
-const CHUNK_SIZE = 500; // characters per chunk
-const CHUNK_OVERLAP = 100; // overlap between chunks
+const CHUNK_SIZE = 1000; // characters per chunk
+const CHUNK_OVERLAP = 200; // overlap between chunks
 const DOCS_DIR = path.join(process.cwd(), "docs");
 
 // ─── Init clients ─────────────────────────────────────────
@@ -52,8 +52,11 @@ function splitIntoChunks(text: string): string[] {
 }
 
 async function generateEmbedding(text: string): Promise<number[]> {
-    const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
-    const result = await model.embedContent(text);
+    const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
+    const result = await model.embedContent({
+        content: { role: "user", parts: [{ text }] },
+        outputDimensionality: 768,
+    } as any);
     return result.embedding.values;
 }
 

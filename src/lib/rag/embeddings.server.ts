@@ -11,8 +11,11 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
  * Generate an embedding vector for the given text using Gemini text-embedding-004.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-    const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
-    const result = await model.embedContent(text);
+    const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
+    const result = await model.embedContent({
+        content: { role: "user", parts: [{ text }] },
+        outputDimensionality: 768,
+    } as any);
     return result.embedding.values;
 }
 

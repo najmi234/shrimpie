@@ -24,7 +24,76 @@ const parametersSchema = z.object({
     activity_level: z.number(),
     pondName: z.string().optional().nullable(),
     metricsHistory: z.array(metricHistoryItemSchema).optional().nullable(),
+    doc: z.number().optional().nullable(),
+    stocking_date: z.string().optional().nullable(),
 });
+
+// ---------- Feeding Program SOP ----------
+interface FeedingStage {
+    docMin: number;
+    docMax: number;
+    weightMin: number;
+    weightMax: number;
+    lengthMin: number;
+    lengthMax: number;
+    feedingRate: string;
+    feedFrequency: string;
+    phase: string;
+}
+
+const feedingStages: FeedingStage[] = [
+    { docMin: 1, docMax: 10, weightMin: 0, weightMax: 0.1, lengthMin: 0.6, lengthMax: 1.2, feedingRate: "-", feedFrequency: "3x/hari", phase: "Blind Feeding" },
+    { docMin: 11, docMax: 20, weightMin: 0.1, weightMax: 1.5, lengthMin: 1.2, lengthMax: 2.0, feedingRate: "-", feedFrequency: "3x/hari", phase: "Blind Feeding" },
+    { docMin: 21, docMax: 30, weightMin: 1.5, weightMax: 2.5, lengthMin: 2.0, lengthMax: 3.5, feedingRate: "-", feedFrequency: "4x/hari", phase: "Blind Feeding" },
+    { docMin: 30, docMax: 40, weightMin: 2.5, weightMax: 3.5, lengthMin: 3.5, lengthMax: 5.5, feedingRate: "5.8–4.8%", feedFrequency: "4x/hari", phase: "Kontrol Ancho" },
+    { docMin: 40, docMax: 60, weightMin: 3.5, weightMax: 8.0, lengthMin: 5.5, lengthMax: 6.5, feedingRate: "4.8–3.2%", feedFrequency: "4–5x/hari", phase: "Kontrol Ancho" },
+    { docMin: 60, docMax: 80, weightMin: 8.0, weightMax: 12.5, lengthMin: 6.5, lengthMax: 8.5, feedingRate: "3.2–2.6%", feedFrequency: "5x/hari", phase: "Kontrol Ancho" },
+    { docMin: 80, docMax: 100, weightMin: 12.5, weightMax: 17.5, lengthMin: 8.5, lengthMax: 10.0, feedingRate: "2.6–2.2%", feedFrequency: "5x/hari", phase: "Kontrol Ancho" },
+    { docMin: 100, docMax: 120, weightMin: 17.5, weightMax: 22.0, lengthMin: 10.0, lengthMax: 11.5, feedingRate: "2.2–1.8%", feedFrequency: "5–6x/hari", phase: "Kontrol Ancho" },
+    { docMin: 120, docMax: 999, weightMin: 22.0, weightMax: 999, lengthMin: 11.5, lengthMax: 999, feedingRate: "≤1.8%", feedFrequency: "6x/hari", phase: "Kontrol Ancho" },
+];
+
+function getHandlingRecommendation(doc: number | null, weight: number, length: number, activity: number): string {
+    if (doc === null) return "Data stocking_date belum tersedia untuk kolam ini. Silakan isi tanggal tebar di database.";
+
+    const stage = feedingStages.find((s) => doc >= s.docMin && doc <= s.docMax);
+    if (!stage) return "DOC di luar jangkauan program pakan.";
+
+    const lines: string[] = [];
+    lines.push(`📅 DOC ${doc} — Fase ${stage.phase}`);
+    lines.push(`🍤 Frekuensi pakan: ${stage.feedFrequency}${stage.feedingRate !== "-" ? ` | Feeding rate: ${stage.feedingRate}` : ""}`);
+
+    // Check weight
+    if (weight < stage.weightMin) {
+        lines.push(`⚠️ Berat (${weight}g) di bawah target (${stage.weightMin}–${stage.weightMax}g). Pertimbangkan tingkatkan kualitas pakan dan cek kualitas air.`);
+    } else if (weight > stage.weightMax) {
+        lines.push(`✅ Berat (${weight}g) melebihi target (${stage.weightMin}–${stage.weightMax}g). Pertumbuhan sangat baik.`);
+    } else {
+        lines.push(`✅ Berat (${weight}g) sesuai target (${stage.weightMin}–${stage.weightMax}g).`);
+    }
+
+    // Check length
+    if (length < stage.lengthMin) {
+        lines.push(`⚠️ Panjang (${length}cm) di bawah target (${stage.lengthMin}–${stage.lengthMax}cm). Evaluasi nutrisi pakan.`);
+    } else if (length > stage.lengthMax) {
+        lines.push(`✅ Panjang (${length}cm) melebihi target (${stage.lengthMin}–${stage.lengthMax}cm).`);
+    } else {
+        lines.push(`✅ Panjang (${length}cm) sesuai target (${stage.lengthMin}–${stage.lengthMax}cm).`);
+    }
+
+    // Check activity level
+    if (activity < 3) {
+        lines.push(`🚨 Aktivitas (${activity} px/s) sangat rendah. Segera cek kualitas air (DO, pH, salinitas) dan pastikan aerasi berjalan optimal. Kurangi porsi pakan sementara.`);
+    } else if (activity < 5) {
+        lines.push(`⚠️ Aktivitas (${activity} px/s) cukup rendah. Pantau kualitas air dan perhatikan tanda-tanda stres pada udang.`);
+    } else if (activity > 15) {
+        lines.push(`⚠️ Aktivitas (${activity} px/s) sangat tinggi. Kemungkinan udang stres atau ada perubahan lingkungan mendadak. Periksa suhu dan parameter air.`);
+    } else {
+        lines.push(`✅ Aktivitas (${activity} px/s) normal.`);
+    }
+
+    return lines.join("\n");
+}
 
 const requestSchema = z.object({
     messages: z.array(messageSchema).min(1, "Riwayat percakapan tidak boleh kosong"),
@@ -159,10 +228,6 @@ export async function POST(req: Request) {
             });
         }
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-3-flash-preview",
-        });
-
         // Extract current user prompt
         const historyLength = messages.length;
         const currentPrompt = messages[historyLength - 1].content;
@@ -195,6 +260,16 @@ export async function POST(req: Request) {
         }> = parameters.metricsHistory ?? [];
 
         let pertumbuhanDataSection = "";
+        const resolvedDoc = parameters.doc !== undefined && parameters.doc !== null 
+            ? parameters.doc 
+            : (parameters.stocking_date 
+                ? Math.floor((Date.now() - new Date(parameters.stocking_date).getTime()) / (1000 * 60 * 60 * 24)) 
+                : null);
+
+        if (resolvedDoc !== null && resolvedDoc >= 0) {
+            pertumbuhanDataSection += `**Days of Culture (DOC) saat ini:** ${resolvedDoc} hari\n\n`;
+        }
+
         if (metricsHistory.length > 0) {
             // Latest reading
             const latest = metricsHistory[metricsHistory.length - 1];
@@ -202,8 +277,11 @@ export async function POST(req: Request) {
 - Rata-rata Berat Udang: ${latest.avg_body_weight_g} gram
 - Rata-rata Panjang Udang: ${latest.avg_body_length_cm} cm
 - Tingkat Keaktifan: ${latest.activity_level_pct}%
-
-**Riwayat Seluruh Data Pertumbuhan Device (${metricsHistory.length} data, diurutkan dari terlama ke terbaru):**
+`;
+            if (resolvedDoc !== null && resolvedDoc >= 0) {
+                pertumbuhanDataSection += `- Umur Udang (DOC): ${resolvedDoc} hari\n`;
+            }
+            pertumbuhanDataSection += `\n**Riwayat Seluruh Data Pertumbuhan Device (${metricsHistory.length} data, diurutkan dari terlama ke terbaru):**
 | No | Waktu Pencatatan | Berat (g) | Panjang (cm) | Keaktifan (%) |
 |----|-----------------|-----------|-------------|--------------|
 `;
@@ -220,40 +298,57 @@ export async function POST(req: Request) {
 - Rata-rata Berat Udang: ${parameters.avg_weight} gram
 - Rata-rata Panjang Udang: ${parameters.avg_length} cm
 - Tingkat Keaktifan: ${parameters.activity_level}%`;
+            if (resolvedDoc !== null && resolvedDoc >= 0) {
+                pertumbuhanDataSection += `\n- Umur Udang (DOC): ${resolvedDoc} hari`;
+            }
         }
 
-        // System prompt with Pertumbuhan data + RAG context
-        const systemPrompt = `Anda adalah "Shrimpie Advisor", seorang ahli akuakultur senior spesialis budidaya udang vaname (Litopenaeus vannamei). Tugas Anda adalah memberikan saran, diagnosis, dan rekomendasi terkait penanganan udang berdasarkan data Pertumbuhan terkini, referensi dokumen pengetahuan, dan best practice (SOP) budidaya udang.
+        // ─── Rule-Based Recommendation integration ───────────────
+        let ruleBasedSection = "";
+        if (resolvedDoc !== null && resolvedDoc >= 0) {
+            const ruleRec = getHandlingRecommendation(
+                resolvedDoc,
+                parameters.avg_weight,
+                parameters.avg_length,
+                parameters.activity_level
+            );
+            ruleBasedSection = `\n**Rekomendasi Berbasis Aturan SOP (Rule-Based Recommendation):**\n${ruleRec}\n`;
+        }
+
+        // System prompt with Pertumbuhan data + RAG context + Rule-Based SOP
+        const systemPrompt = `Anda adalah "Shrimpie Advisor", seorang ahli akuakultur senior spesialis budidaya udang vaname (Litopenaeus vannamei). Tugas Anda adalah memberikan saran, diagnosis, dan rekomendasi terkait penanganan udang berdasarkan data Pertumbuhan terkini, Rekomendasi Berbasis Aturan SOP, referensi dokumen pengetahuan, dan best practice (SOP) budidaya udang.
 
 ${pertumbuhanDataSection}
+${ruleBasedSection}
 ${ragContext}
 
 **Aturan Penjawab:**
 1. Gunakan bahasa Indonesia yang profesional namun ramah dan mudah dipahami oleh petambak.
-2. Selalu kaitkan jawaban Anda dengan data Pertumbuhan saat ini jika relevan. Misalnya, jika berat di bawah 15 gram di umur tertentu, berikan saran pakan. Jika keaktifan di bawah rata-rata, sarankan cek DO (Dissolved Oxygen) atau aerator.
+2. Selalu kaitkan jawaban Anda dengan data Pertumbuhan saat ini dan Rekomendasi Berbasis Aturan SOP jika relevan. Rekomendasi Berbasis Aturan SOP adalah hasil evaluasi sistem aturan baku terhadap DOC, berat, panjang, dan aktivitas udang saat ini. Gunakan itu sebagai acuan dasar analisis Anda, lalu kembangkan analisanya dengan penjelasan ilmiah yang mudah dipahami atau referensi dokumen pengetahuan yang relevan.
 3. Jika ada referensi dokumen pengetahuan yang relevan, gunakan informasi tersebut untuk memperkuat jawaban Anda. Sebutkan bahwa rekomendasi didasarkan pada dokumen/SOP yang ada.
 4. Berikan rekomendasi yang praktis dan actionable (bisa langsung diterapkan).
 5. Gunakan format Markdown (seperti bullet points, bold text, atau tabel jika perlu membandingkan nilai) agar mudah dibaca.
 6. Jika ditanya di luar konteks budidaya udang atau perikanan, tolak dengan sopan dan kembalikan topik ke akuakultur.`;
 
-        // Structure the prompt with conversation history
-        let fullPrompt = `${systemPrompt}\n\n`;
+        // Initialize Gemini model with dynamic system instruction
+        const chatModel = genAI.getGenerativeModel({
+            model: "gemini-3-flash-preview",
+            systemInstruction: systemPrompt,
+        });
 
-        if (historyLength > 1) {
-            fullPrompt += `**Konteks Percakapan Sebelumnya:**\n`;
-            for (let i = 0; i < historyLength - 1; i++) {
-                const msg = messages[i];
-                if (msg.role !== "system") {
-                    fullPrompt += `${msg.role === "user" ? "Petambak" : "Shrimpie Advisor"}: ${msg.content}\n`;
-                }
-            }
-            fullPrompt += `\n`;
-        }
+        // Map previous messages to Gemini Chat history format
+        const chatHistory = messages.slice(0, historyLength - 1).map(msg => ({
+            role: msg.role === "assistant" ? "model" : "user",
+            parts: [{ text: msg.content }],
+        }));
 
-        fullPrompt += `**Pertanyaan Petambak Saat Ini:**\n${currentPrompt}\n\n**Jawaban Anda:**`;
+        // Start multi-turn chat session
+        const chat = chatModel.startChat({
+            history: chatHistory,
+        });
 
-        // ─── Streaming response ─────────────────────────────
-        const result = await model.generateContentStream(fullPrompt);
+        // ─── Streaming response using multi-turn sendMessageStream ──
+        const result = await chat.sendMessageStream(currentPrompt);
 
         const encoder = new TextEncoder();
         let fullResponseText = "";
