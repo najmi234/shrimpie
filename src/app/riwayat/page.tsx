@@ -260,31 +260,33 @@ function RiwayatPageContent() {
         <div className="container mx-auto space-y-8 overflow-hidden">
             {/* Header + Filters */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center w-full sm:w-auto">
                     {/* Pond selector */}
-                    <Combobox
-                        items={pondNames}
-                        value={selectedPondName}
-                        onValueChange={(val) => {
-                            if (val !== null) setSelectedPondName(val)
-                        }}
-                    >
-                        <ComboboxInput className="w-full bg-background border-border" placeholder="Pilih Kolam" />
-                        <ComboboxContent>
-                            <ComboboxEmpty>Kolam tidak ditemukan.</ComboboxEmpty>
-                            <ComboboxList>
-                                {(item) => (
-                                    <ComboboxItem key={item} value={item}>
-                                        {item}
-                                    </ComboboxItem>
-                                )}
-                            </ComboboxList>
-                        </ComboboxContent>
-                    </Combobox>
+                    <div className="w-full sm:w-64">
+                        <Combobox
+                            items={pondNames}
+                            value={selectedPondName}
+                            onValueChange={(val) => {
+                                if (val !== null) setSelectedPondName(val)
+                            }}
+                        >
+                            <ComboboxInput className="w-full bg-background border-border" placeholder="Pilih Kolam" />
+                            <ComboboxContent>
+                                <ComboboxEmpty>Kolam tidak ditemukan.</ComboboxEmpty>
+                                <ComboboxList>
+                                    {(item) => (
+                                        <ComboboxItem key={item} value={item}>
+                                            {item}
+                                        </ComboboxItem>
+                                    )}
+                                </ComboboxList>
+                            </ComboboxContent>
+                        </Combobox>
+                    </div>
 
                     {/* Date range inputs */}
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
+                    <div className="grid grid-cols-2 gap-3 w-full sm:flex sm:items-center sm:gap-3 sm:w-auto">
+                        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-1.5 flex-1 sm:flex-none">
                             <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
                             <Input
                                 type="date"
@@ -293,7 +295,7 @@ function RiwayatPageContent() {
                                 className="h-9 w-full sm:w-[150px] text-sm border-border"
                             />
                         </div>
-                        <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
+                        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-1.5 flex-1 sm:flex-none">
                             <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
                             <Input
                                 type="date"
@@ -307,15 +309,16 @@ function RiwayatPageContent() {
             </div>
 
             {/* Charts */}
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-6 min-w-0">
                 {chartConfigs.map((cfg, index) => (
                     <motion.div
                         key={cfg.dataKey}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
+                        className="min-w-0 w-full"
                     >
-                        <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow">
+                        <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                             <CardContent className="p-5">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-lg font-semibold text-foreground">
@@ -326,7 +329,7 @@ function RiwayatPageContent() {
                                         style={{ color: cfg.color }}
                                     />
                                 </div>
-                                <div className="h-52">
+                                <div className="h-52 w-full min-w-0 overflow-hidden">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <AreaChart data={chartData}>
                                             <defs>
@@ -399,6 +402,7 @@ function RiwayatPageContent() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
+                className="min-w-0 w-full"
             >
                 <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                     <CardContent className="p-5">

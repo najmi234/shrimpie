@@ -278,7 +278,8 @@ export default function WebGISMap() {
             {/* ─── Mobile Bottom Sheet Toggle ─── */}
             <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="md:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-[501] flex items-center gap-2 px-4 py-2 rounded-full bg-background/95 backdrop-blur-md border border-border/50 shadow-lg hover:bg-muted transition-colors"
+                className="md:hidden absolute left-1/2 -translate-x-1/2 z-[701] flex items-center gap-2 px-4 py-2 rounded-full bg-background/95 backdrop-blur-md border border-border/50 shadow-lg hover:bg-muted transition-all duration-300 ease-in-out"
+                style={{ bottom: sidebarOpen ? 'calc(55vh + 1rem)' : '1rem' }}
             >
                 <Navigation className="w-3.5 h-3.5 text-primary" />
                 <span className="text-xs font-medium">Lokasi ({devices.length + ponds.length})</span>
@@ -288,7 +289,7 @@ export default function WebGISMap() {
             {/* ─── Map Sidebar / Bottom Sheet ─── */}
             <div
                 className={`absolute z-[500] bg-background/95 backdrop-blur-md border border-border/50 shadow-lg shadow-black/5 overflow-hidden transition-all duration-300 ease-in-out
-                    md:top-4 md:left-4 md:w-80 md:rounded-xl md:max-h-[calc(100%-2rem)] md:flex md:flex-col
+                    flex flex-col md:top-4 md:left-4 md:w-80 md:rounded-xl md:max-h-[calc(100%-2rem)]
                     ${sidebarOpen
                         ? 'bottom-0 left-0 right-0 max-h-[55vh] md:bottom-auto md:right-auto md:opacity-100 md:translate-x-0 rounded-t-2xl md:rounded-xl'
                         : 'bottom-0 left-0 right-0 max-h-0 md:max-h-[calc(100%-2rem)] md:-translate-x-[calc(100%+2rem)] md:opacity-0 border-transparent'}
@@ -312,7 +313,7 @@ export default function WebGISMap() {
                 </div>
 
                 {/* Device & Pond List */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-2 pb-6 md:pb-2 space-y-2 custom-scrollbar">
                     {devices.length === 0 && ponds.length === 0 && !loading && (
                         <div className="p-4 text-center text-sm text-muted-foreground">
                             Tidak ada data lokasi ditemukan.

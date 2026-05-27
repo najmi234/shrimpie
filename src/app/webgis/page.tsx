@@ -10,7 +10,7 @@ const MapComponent = dynamic(
     {
         ssr: false,
         loading: () => (
-            <div className="w-full h-[calc(100vh-4rem)] flex items-center justify-center bg-muted/20">
+            <div className="w-full h-[calc(100dvh-4rem)] flex items-center justify-center bg-muted/20">
                 <div className="flex flex-col items-center gap-4">
                     <Skeleton className="w-[80vw] max-w-2xl h-[60vh] rounded-xl" />
                     <div className="text-sm text-muted-foreground animate-pulse">Loading Map...</div>
@@ -22,7 +22,7 @@ const MapComponent = dynamic(
 
 export default function WebGISPage() {
     return (
-        <div className="w-full h-[calc(100vh-4rem)]">
+        <div className="w-full h-[calc(100dvh-4rem)]">
             <Suspense>
                 <MapComponent />
             </Suspense>
