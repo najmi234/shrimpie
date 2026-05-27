@@ -263,7 +263,12 @@ export async function POST(req: Request) {
         const resolvedDoc = parameters.doc !== undefined && parameters.doc !== null 
             ? parameters.doc 
             : (parameters.stocking_date 
-                ? Math.floor((Date.now() - new Date(parameters.stocking_date).getTime()) / (1000 * 60 * 60 * 24)) 
+                ? (() => {
+                    const lastRecordedAt = metricsHistory.length > 0 
+                        ? new Date(metricsHistory[metricsHistory.length - 1].recorded_at).getTime()
+                        : Date.now();
+                    return Math.floor((lastRecordedAt - new Date(parameters.stocking_date!).getTime()) / (1000 * 60 * 60 * 24));
+                  })()
                 : null);
 
         if (resolvedDoc !== null && resolvedDoc >= 0) {

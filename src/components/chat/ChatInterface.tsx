@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import {
     Send,
@@ -42,6 +42,7 @@ export interface PondParameters {
     metricsHistory?: PondMetric[];
     doc?: number;
     stocking_date?: string;
+    lastRecordedAt?: string;
 }
 
 interface ChatMessage {
@@ -58,32 +59,6 @@ interface ChatInterfaceProps {
     userId: string | null;
     onConversationCreated: (id: string, title: string) => void;
 }
-
-// function formatDate(dateStr: string) {
-//     const d = new Date(dateStr);
-//     const dd = String(d.getDate()).padStart(2, "0");
-//     const mm = String(d.getMonth() + 1).padStart(2, "0");
-//     const yyyy = d.getFullYear();
-//     const hh = String(d.getHours()).padStart(2, "0");
-//     const min = String(d.getMinutes()).padStart(2, "0");
-//     return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
-// }
-
-// function buildWelcomeMessage(parameters: PondParameters): ChatMessage {
-//     return {
-//         id: "welcome",
-//         role: "assistant",
-//         content: `Halo! Saya adalah **Shrimpie Advisor** Anda.${parameters.pondName ? ` Saya telah menganalisis data dari kolam **${parameters.pondName}**.` : ""}
-
-// **Parameter Kolam Saat Ini:**
-// - Rata-rata Berat: **${parameters.avg_weight.toFixed(1)} gram**
-// - Rata-rata Panjang: **${parameters.avg_length.toFixed(1)} cm**
-// - Tingkat Keaktifan: **${parameters.activity_level.toFixed(1)} px/s**
-
-// Ada yang bisa saya bantu terkait penanganan udang Anda hari ini?`,
-//         createdAt: new Date(),
-//     };
-// }
 
 function formatDate(dateStr: string) {
     const d = new Date(dateStr);
@@ -393,6 +368,11 @@ export default function ChatInterface({
         }
     };
 
+    const lastDataDate = useMemo(() => {
+        if (!parameters.lastRecordedAt) return null;
+        return formatDate(parameters.lastRecordedAt);
+    }, [parameters.lastRecordedAt]);
+
     const metricCards = [
         {
             label: "Rata-rata Berat",
@@ -418,6 +398,30 @@ export default function ChatInterface({
             color: "text-indigo-500",
             bg: "bg-indigo-500/10",
         },
+        ...(parameters.doc !== undefined && parameters.doc !== null
+            ? [
+                  {
+                      label: "DOC (Umur Udang)",
+                      value: String(parameters.doc),
+                      unit: "hari",
+                      icon: Clock,
+                      color: "text-cyan-500",
+                      bg: "bg-cyan-500/10",
+                  },
+              ]
+            : []),
+        ...(lastDataDate
+            ? [
+                  {
+                      label: "Data Terakhir",
+                      value: lastDataDate,
+                      unit: "",
+                      icon: Clock,
+                      color: "text-purple-500",
+                      bg: "bg-purple-500/10",
+                  },
+              ]
+            : []),
     ];
 
     return (

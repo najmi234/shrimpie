@@ -182,20 +182,22 @@ function ChatAgentContent() {
     const selectedPond = pondList.find((p) => p.id === selectedPondId)
     const stockingDate = selectedPond?.stocking_date ?? null
 
-    // Calculate DOC
+    // Calculate DOC based on last metric's recorded_at (not current date)
+    const latestMetric =
+        metrics.length > 0 ? metrics[metrics.length - 1] : null
     const doc = useMemo(() => {
         if (!stockingDate) return null
         const stocking = new Date(stockingDate)
-        const now = new Date()
+        const endDate = latestMetric
+            ? new Date(latestMetric.recorded_at)
+            : new Date()
         const diffDays = Math.floor(
-            (now.getTime() - stocking.getTime()) / (1000 * 60 * 60 * 24)
+            (endDate.getTime() - stocking.getTime()) / (1000 * 60 * 60 * 24)
         )
         return diffDays >= 0 ? diffDays : null
-    }, [stockingDate])
+    }, [stockingDate, latestMetric])
 
     // Build parameters from latest metric
-    const latestMetric =
-        metrics.length > 0 ? metrics[metrics.length - 1] : null
     const pondParameters = {
         avg_weight: latestMetric?.avg_body_weight_g ?? 0,
         avg_length: latestMetric?.avg_body_length_cm ?? 0,
@@ -204,6 +206,7 @@ function ChatAgentContent() {
         metricsHistory: metrics,
         doc: doc ?? undefined,
         stocking_date: stockingDate ?? undefined,
+        lastRecordedAt: latestMetric?.recorded_at ?? undefined,
     }
 
     // ─── Conversation handlers ──────────────────────────────

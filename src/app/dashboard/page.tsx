@@ -233,13 +233,16 @@ export default function ShrimpMonitoringDashboard() {
     ]
   }, [metrics, selectedPondId])
 
-  // Calculate DOC and recommendation
+  // Calculate DOC based on last metric's recorded_at (not current date)
+  const latestMetricRecord = metrics.length > 0 ? metrics[metrics.length - 1] : null
   const doc = useMemo(() => {
     if (!stockingDate) return null
     const stocking = new Date(stockingDate)
-    const now = new Date()
-    return Math.floor((now.getTime() - stocking.getTime()) / (1000 * 60 * 60 * 24))
-  }, [stockingDate])
+    const endDate = latestMetricRecord
+      ? new Date(latestMetricRecord.recorded_at)
+      : new Date()
+    return Math.floor((endDate.getTime() - stocking.getTime()) / (1000 * 60 * 60 * 24))
+  }, [stockingDate, latestMetricRecord])
 
   const recommendation = useMemo(() => {
     if (metrics.length === 0) return null
@@ -312,7 +315,7 @@ export default function ShrimpMonitoringDashboard() {
                   </Combobox>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto min-h-0 max-h-48 lg:max-h-none pr-2 custom-scrollbar">
                   <h2 className="text-xl font-semibold mb-3 text-foreground sticky top-0 bg-card py-1 z-10">Select Video</h2>
                   <div className="grid grid-cols-2 gap-3 pb-2">
                     {filteredVideos.map((video) => (
@@ -361,9 +364,17 @@ export default function ShrimpMonitoringDashboard() {
               </div>
               <div className="flex-1 overflow-auto bg-blue-50/50 dark:bg-blue-950/20 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30 custom-scrollbar">
                 {recommendation ? (
-                  <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
-                    {recommendation}
-                  </p>
+                  <>
+                    {latestMetricRecord && (
+                      <p className="text-[11px] text-muted-foreground mb-2 pb-2">
+                        📊 Data terakhir: {formatRecordedAt(latestMetricRecord.recorded_at)}
+                        {doc !== null ? ` · DOC ${doc} hari` : ""}
+                      </p>
+                    )}
+                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
+                      {recommendation}
+                    </p>
+                  </>
                 ) : (
                   <p className="text-sm text-muted-foreground italic flex h-full items-center justify-center">
                     Belum ada data metrik untuk kolam ini.

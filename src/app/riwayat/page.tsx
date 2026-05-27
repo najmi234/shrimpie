@@ -257,7 +257,7 @@ function RiwayatPageContent() {
     }, [dailySummaries])
 
     return (
-        <div className="container mx-auto space-y-8">
+        <div className="container mx-auto space-y-8 overflow-hidden">
             {/* Header + Filters */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -283,23 +283,23 @@ function RiwayatPageContent() {
                     </Combobox>
 
                     {/* Date range inputs */}
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
                             <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
                             <Input
                                 type="date"
                                 value={fromDate}
                                 onChange={(e) => setFromDate(e.target.value)}
-                                className="h-9 w-[150px] text-sm border-border"
+                                className="h-9 w-full sm:w-[150px] text-sm border-border"
                             />
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
                             <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
                             <Input
                                 type="date"
                                 value={toDate}
                                 onChange={(e) => setToDate(e.target.value)}
-                                className="h-9 w-[150px] text-sm border-border"
+                                className="h-9 w-full sm:w-[150px] text-sm border-border"
                             />
                         </div>
                     </div>
@@ -400,7 +400,7 @@ function RiwayatPageContent() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
             >
-                <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow">
+                <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                     <CardContent className="p-5">
                         <h3 className="text-lg font-semibold text-foreground mb-4">
                             Detail Data Harian
