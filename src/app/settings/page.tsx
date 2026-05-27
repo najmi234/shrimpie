@@ -14,8 +14,27 @@ import {
     Loader2,
     MapPin,
     Pencil,
+    Trash2,
+    Plus,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import {
+    Combobox,
+    ComboboxContent,
+    ComboboxEmpty,
+    ComboboxInput,
+    ComboboxItem,
+    ComboboxList,
+} from "@/components/ui/combobox"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
 
 // ---------- types ----------
 
@@ -23,6 +42,7 @@ interface Pond {
     id: string
     name: string
     stocking_date: string | null
+    location: string | null
 }
 
 interface Device {
@@ -31,6 +51,7 @@ interface Device {
     status: string
     location: string | null
     last_update_at: string | null
+    pond_id: string | null
 }
 
 // ---------- settings menu ----------
@@ -75,13 +96,28 @@ export default function SettingsPage() {
     const [deviceSaving, setDeviceSaving] = useState<Record<string, boolean>>({})
     const [deviceSaved, setDeviceSaved] = useState<Record<string, boolean>>({})
 
+    // ----- Add/Delete state -----
+    const [addPondOpen, setAddPondOpen] = useState(false)
+    const [newPondName, setNewPondName] = useState("")
+    const [newPondStockingDate, setNewPondStockingDate] = useState("")
+    const [newPondLocation, setNewPondLocation] = useState("")
+    const [addPondLoading, setAddPondLoading] = useState(false)
+
+    const [addDeviceOpen, setAddDeviceOpen] = useState(false)
+    const [newDeviceName, setNewDeviceName] = useState("")
+    const [newDevicePondId, setNewDevicePondId] = useState("")
+    const [addDeviceLoading, setAddDeviceLoading] = useState(false)
+
+    const [deleteTarget, setDeleteTarget] = useState<{ type: "pond" | "device"; id: string; name: string } | null>(null)
+    const [deleteLoading, setDeleteLoading] = useState(false)
+
     // ----- Fetch ponds -----
     useEffect(() => {
         if (activeCategory !== "pond") return
         async function fetchPonds() {
             const { data, error } = await supabase
                 .from("ponds")
-                .select("id, name, stocking_date")
+                .select("id, name, stocking_date, location")
                 .order("name")
             if (error) {
                 console.error("Failed to fetch ponds:", error)
@@ -108,14 +144,48 @@ export default function SettingsPage() {
                 console.error("Failed to fetch devices:", error)
                 return
             }
-            const sorted = (data ?? []).sort((a: any, b: any) => {
+
+            // Fetch pond_id from the actual devices table
+            const { data: devicesData, error: devicesError } = await supabase
+                .from("devices")
+                .select("id, pond_id")
+            if (devicesError) {
+                console.error("Failed to fetch device pond assignments:", devicesError)
+            }
+
+            const pondIdMap = new Map<string, string | null>()
+            for (const d of devicesData ?? []) {
+                pondIdMap.set(d.id, d.pond_id)
+            }
+
+            const sorted = (data ?? []).map((d: any) => ({
+                ...d,
+                pond_id: pondIdMap.get(d.id) ?? null,
+            })).sort((a: any, b: any) => {
                 const numA = parseInt(a.name.match(/\d+/)?.[0] || "0")
                 const numB = parseInt(b.name.match(/\d+/)?.[0] || "0")
                 return numA - numB
             })
             setDevices(sorted)
         }
+        async function fetchPondsForDevices() {
+            const { data, error } = await supabase
+                .from("ponds")
+                .select("id, name, stocking_date, location")
+                .order("name")
+            if (error) {
+                console.error("Failed to fetch ponds for devices:", error)
+                return
+            }
+            const sorted = (data ?? []).sort((a: any, b: any) => {
+                const numA = parseInt(a.name.match(/\d+/)?.[0] || "0")
+                const numB = parseInt(b.name.match(/\d+/)?.[0] || "0")
+                return numA - numB
+            })
+            setPonds(sorted)
+        }
         fetchDevices()
+        fetchPondsForDevices()
     }, [activeCategory])
 
     // ----- Pond handlers -----
@@ -138,6 +208,7 @@ export default function SettingsPage() {
             .update({
                 name: edits.name ?? pond.name,
                 stocking_date: edits.stocking_date ?? pond.stocking_date,
+                location: edits.location ?? pond.location,
             })
             .eq("id", pond.id)
 
@@ -156,6 +227,7 @@ export default function SettingsPage() {
                         ...p,
                         name: edits.name ?? p.name,
                         stocking_date: edits.stocking_date ?? p.stocking_date,
+                        location: edits.location ?? p.location,
                     }
                     : p
             )
@@ -183,24 +255,43 @@ export default function SettingsPage() {
         if (!edits) return
 
         setDeviceSaving((prev) => ({ ...prev, [device.id]: true }))
-        const { error } = await supabase
-            .from("device_status_monitor")
-            .update({
-                name: edits.name ?? device.name,
-            })
-            .eq("id", device.id)
+
+        // Save name to device_status_monitor
+        if (edits.name) {
+            const { error } = await supabase
+                .from("device_status_monitor")
+                .update({ name: edits.name })
+                .eq("id", device.id)
+            if (error) {
+                console.error("Failed to save device name:", error)
+                setDeviceSaving((prev) => ({ ...prev, [device.id]: false }))
+                return
+            }
+        }
+
+        // Save pond_id to the devices table
+        if (edits.pond_id !== undefined) {
+            const { error } = await supabase
+                .from("devices")
+                .update({ pond_id: edits.pond_id })
+                .eq("id", device.id)
+            if (error) {
+                console.error("Failed to save device pond assignment:", error)
+                setDeviceSaving((prev) => ({ ...prev, [device.id]: false }))
+                return
+            }
+        }
 
         setDeviceSaving((prev) => ({ ...prev, [device.id]: false }))
-
-        if (error) {
-            console.error("Failed to save device:", error)
-            return
-        }
 
         setDevices((prev) =>
             prev.map((d) =>
                 d.id === device.id
-                    ? { ...d, name: edits.name ?? d.name }
+                    ? {
+                        ...d,
+                        name: edits.name ?? d.name,
+                        pond_id: edits.pond_id !== undefined ? edits.pond_id : d.pond_id,
+                    }
                     : d
             )
         )
@@ -211,6 +302,90 @@ export default function SettingsPage() {
         })
         setDeviceSaved((prev) => ({ ...prev, [device.id]: true }))
         setTimeout(() => setDeviceSaved((prev) => ({ ...prev, [device.id]: false })), 2000)
+    }
+
+    // ----- Add Pond handler -----
+    const handleAddPond = async () => {
+        if (!newPondName.trim()) return
+        setAddPondLoading(true)
+        const { data, error } = await supabase
+            .from("ponds")
+            .insert({
+                name: newPondName.trim(),
+                stocking_date: newPondStockingDate || null,
+                location: newPondLocation.trim() || null,
+            })
+            .select("id, name, stocking_date, location")
+            .single()
+        setAddPondLoading(false)
+        if (error) {
+            console.error("Failed to add pond:", error)
+            return
+        }
+        if (data) {
+            setPonds((prev) => [...prev, data].sort((a, b) => {
+                const numA = parseInt(a.name.match(/\d+/)?.[0] || "0")
+                const numB = parseInt(b.name.match(/\d+/)?.[0] || "0")
+                return numA - numB
+            }))
+        }
+        setNewPondName("")
+        setNewPondStockingDate("")
+        setNewPondLocation("")
+        setAddPondOpen(false)
+    }
+
+    // ----- Add Device handler -----
+    const handleAddDevice = async () => {
+        if (!newDeviceName.trim()) return
+        setAddDeviceLoading(true)
+        const { data, error } = await supabase
+            .from("device_status_monitor")
+            .insert({
+                name: newDeviceName.trim(),
+                status: "inactive",
+            })
+            .select("id, name, status, location, last_update_at")
+            .single()
+        setAddDeviceLoading(false)
+        if (error) {
+            console.error("Failed to add device:", error)
+            return
+        }
+        if (data) {
+            const newDevice: Device = { ...data, pond_id: newDevicePondId || null }
+            // Also insert into devices table if pond_id is set
+            if (newDevicePondId) {
+                await supabase.from("devices").insert({ id: data.id, pond_id: newDevicePondId })
+            }
+            setDevices((prev) => [...prev, newDevice].sort((a, b) => {
+                const numA = parseInt(a.name.match(/\d+/)?.[0] || "0")
+                const numB = parseInt(b.name.match(/\d+/)?.[0] || "0")
+                return numA - numB
+            }))
+        }
+        setNewDeviceName("")
+        setNewDevicePondId("")
+        setAddDeviceOpen(false)
+    }
+
+    // ----- Delete handler -----
+    const handleDelete = async () => {
+        if (!deleteTarget) return
+        setDeleteLoading(true)
+        const table = deleteTarget.type === "pond" ? "ponds" : "device_status_monitor"
+        const { error } = await supabase.from(table).delete().eq("id", deleteTarget.id)
+        setDeleteLoading(false)
+        if (error) {
+            console.error(`Failed to delete ${deleteTarget.type}:`, error)
+            return
+        }
+        if (deleteTarget.type === "pond") {
+            setPonds((prev) => prev.filter((p) => p.id !== deleteTarget.id))
+        } else {
+            setDevices((prev) => prev.filter((d) => d.id !== deleteTarget.id))
+        }
+        setDeleteTarget(null)
     }
 
     // ----- Render: main menu -----
@@ -255,10 +430,49 @@ export default function SettingsPage() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-4"
         >
+            {/* Add Pond Button */}
+            <div className="flex justify-end">
+                <Dialog open={addPondOpen} onOpenChange={setAddPondOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="sm" className="gap-2 rounded-xl">
+                            <Plus className="w-4 h-4" />
+                            Tambah Kolam
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Tambah Kolam Baru</DialogTitle>
+                            <DialogDescription>Isi informasi kolam baru yang ingin ditambahkan.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-3 py-2">
+                            <div>
+                                <label className="text-xs text-muted-foreground mb-1 block">Nama Kolam *</label>
+                                <Input value={newPondName} onChange={(e) => setNewPondName(e.target.value)} placeholder="Kolam 1" className="h-9 text-sm" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-muted-foreground mb-1 block">Stocking Date</label>
+                                <Input type="date" value={newPondStockingDate} onChange={(e) => setNewPondStockingDate(e.target.value)} className="h-9 text-sm" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-muted-foreground mb-1 block">Lokasi (lng, lat)</label>
+                                <Input value={newPondLocation} onChange={(e) => setNewPondLocation(e.target.value)} placeholder="112.820783, -7.270499" className="h-9 text-sm" />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setAddPondOpen(false)}>Batal</Button>
+                            <Button onClick={handleAddPond} disabled={!newPondName.trim() || addPondLoading} className="gap-2">
+                                {addPondLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                Tambah
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
             {ponds.length === 0 ? (
                 <Card className="rounded-2xl py-0 border-border">
                     <CardContent className="p-8 text-center text-muted-foreground">
-                        Tidak ada data kolam.
+                        Tidak ada data kolam. Klik &quot;Tambah Kolam&quot; untuk menambah.
                     </CardContent>
                 </Card>
             ) : (
@@ -286,7 +500,7 @@ export default function SettingsPage() {
                                                 <p className="text-xs text-muted-foreground">Nama Kolam</p>
                                             </div>
                                         </div>
-                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div>
                                                 <label className="text-xs text-muted-foreground mb-1 block">Nama Kolam</label>
                                                 <Input
@@ -304,12 +518,21 @@ export default function SettingsPage() {
                                                     className="h-9 text-sm border-border"
                                                 />
                                             </div>
-                                            <div className="flex items-end">
+                                            <div>
+                                                <label className="text-xs text-muted-foreground mb-1 block">Lokasi (lng, lat)</label>
+                                                <Input
+                                                    value={edited?.location ?? pond.location ?? ""}
+                                                    onChange={(e) => handlePondFieldChange(pond.id, "location", e.target.value)}
+                                                    placeholder="112.820783, -7.270499"
+                                                    className="h-9 text-sm border-border"
+                                                />
+                                            </div>
+                                            <div className="flex items-end gap-2">
                                                 <Button
                                                     size="sm"
                                                     disabled={!hasChanges || saving}
                                                     onClick={() => handleSavePond(pond)}
-                                                    className="h-9 gap-2 w-full sm:w-auto"
+                                                    className="h-9 gap-2 flex-1 sm:flex-none"
                                                     variant={saved ? "outline" : "default"}
                                                 >
                                                     {saving ? (
@@ -320,6 +543,14 @@ export default function SettingsPage() {
                                                         <Save className="w-4 h-4" />
                                                     )}
                                                     {saving ? "Menyimpan..." : saved ? "Tersimpan" : "Simpan"}
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-9 px-2.5 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
+                                                    onClick={() => setDeleteTarget({ type: "pond", id: pond.id, name: pond.name })}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
                                                 </Button>
                                             </div>
                                         </div>
@@ -341,10 +572,64 @@ export default function SettingsPage() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-4"
         >
+            {/* Add Device Button */}
+            <div className="flex justify-end">
+                <Dialog open={addDeviceOpen} onOpenChange={setAddDeviceOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="sm" className="gap-2 rounded-xl">
+                            <Plus className="w-4 h-4" />
+                            Tambah Device
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Tambah Device Baru</DialogTitle>
+                            <DialogDescription>Isi informasi perangkat baru yang ingin ditambahkan.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-3 py-2">
+                            <div>
+                                <label className="text-xs text-muted-foreground mb-1 block">Nama Device *</label>
+                                <Input value={newDeviceName} onChange={(e) => setNewDeviceName(e.target.value)} placeholder="Device 1" className="h-9 text-sm" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-muted-foreground mb-1 block">Kolam (opsional)</label>
+                                <Combobox
+                                    items={ponds.map(p => p.name)}
+                                    value={ponds.find(p => p.id === newDevicePondId)?.name ?? ""}
+                                    onValueChange={(val) => {
+                                        if (val !== null) {
+                                            const selectedPond = ponds.find(p => p.name === val)
+                                            if (selectedPond) setNewDevicePondId(selectedPond.id)
+                                        }
+                                    }}
+                                >
+                                    <ComboboxInput className="w-full bg-background border-border h-9 text-sm" placeholder="Pilih Kolam" />
+                                    <ComboboxContent>
+                                        <ComboboxEmpty>Kolam tidak ditemukan.</ComboboxEmpty>
+                                        <ComboboxList>
+                                            {(item) => (
+                                                <ComboboxItem key={item} value={item}>{item}</ComboboxItem>
+                                            )}
+                                        </ComboboxList>
+                                    </ComboboxContent>
+                                </Combobox>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setAddDeviceOpen(false)}>Batal</Button>
+                            <Button onClick={handleAddDevice} disabled={!newDeviceName.trim() || addDeviceLoading} className="gap-2">
+                                {addDeviceLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                Tambah
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
             {devices.length === 0 ? (
                 <Card className="rounded-2xl py-0 border-border">
                     <CardContent className="p-8 text-center text-muted-foreground">
-                        Tidak ada data perangkat.
+                        Tidak ada data perangkat. Klik &quot;Tambah Device&quot; untuk menambah.
                     </CardContent>
                 </Card>
             ) : (
@@ -386,7 +671,7 @@ export default function SettingsPage() {
                                                 <Cpu className="w-5 h-5 text-indigo-500" />
                                             </div>
                                         </div>
-                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-5 gap-3">
                                             <div>
                                                 <label className="text-xs text-muted-foreground mb-1 block">Nama Device</label>
                                                 <Input
@@ -394,6 +679,36 @@ export default function SettingsPage() {
                                                     onChange={(e) => handleDeviceFieldChange(device.id, "name", e.target.value)}
                                                     className="h-9 text-sm border-border"
                                                 />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-muted-foreground mb-1 block">Kolam</label>
+                                                <Combobox
+                                                    items={ponds.map(p => p.name)}
+                                                    value={(() => {
+                                                        const pid = edited?.pond_id !== undefined ? edited.pond_id : device.pond_id;
+                                                        return ponds.find(p => p.id === pid)?.name ?? "";
+                                                    })()}
+                                                    onValueChange={(val) => {
+                                                        if (val !== null) {
+                                                            const selectedPond = ponds.find(p => p.name === val);
+                                                            if (selectedPond) {
+                                                                handleDeviceFieldChange(device.id, "pond_id", selectedPond.id);
+                                                            }
+                                                        }
+                                                    }}
+                                                >
+                                                    <ComboboxInput className="w-full bg-background border-border h-9 text-sm" placeholder="Pilih Kolam" />
+                                                    <ComboboxContent>
+                                                        <ComboboxEmpty>Kolam tidak ditemukan.</ComboboxEmpty>
+                                                        <ComboboxList>
+                                                            {(item) => (
+                                                                <ComboboxItem key={item} value={item}>
+                                                                    {item}
+                                                                </ComboboxItem>
+                                                            )}
+                                                        </ComboboxList>
+                                                    </ComboboxContent>
+                                                </Combobox>
                                             </div>
                                             <div>
                                                 <label className="text-xs text-muted-foreground mb-1 block">Status</label>
@@ -408,12 +723,12 @@ export default function SettingsPage() {
                                                     <span className="text-sm text-muted-foreground">{lastUpdate}</span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-end">
+                                            <div className="flex items-end gap-2">
                                                 <Button
                                                     size="sm"
                                                     disabled={!hasChanges || saving}
                                                     onClick={() => handleSaveDevice(device)}
-                                                    className="h-9 gap-2 w-full sm:w-auto"
+                                                    className="h-9 gap-2 flex-1 sm:flex-none"
                                                     variant={saved ? "outline" : "default"}
                                                 >
                                                     {saving ? (
@@ -424,6 +739,14 @@ export default function SettingsPage() {
                                                         <Save className="w-4 h-4" />
                                                     )}
                                                     {saving ? "Menyimpan..." : saved ? "Tersimpan" : "Simpan"}
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-9 px-2.5 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
+                                                    onClick={() => setDeleteTarget({ type: "device", id: device.id, name: device.name })}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
                                                 </Button>
                                             </div>
                                         </div>
@@ -474,6 +797,27 @@ export default function SettingsPage() {
                 {activeCategory === "pond" && renderPondSettings()}
                 {activeCategory === "device" && renderDeviceSettings()}
             </AnimatePresence>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+                <DialogContent className="rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Konfirmasi Hapus</DialogTitle>
+                        <DialogDescription>
+                            Apakah Anda yakin ingin menghapus {deleteTarget?.type === "pond" ? "kolam" : "perangkat"}{" "}
+                            <span className="font-semibold text-foreground">{deleteTarget?.name}</span>?
+                            Tindakan ini tidak dapat dibatalkan.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleteLoading}>Batal</Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={deleteLoading} className="gap-2">
+                            {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            Hapus
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

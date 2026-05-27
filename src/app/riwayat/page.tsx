@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo, Fragment } from "react"
+import { useState, useEffect, useMemo, Fragment, Suspense } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import {
     AreaChart,
@@ -12,7 +13,7 @@ import {
     CartesianGrid,
 } from "recharts"
 import { motion } from "framer-motion"
-import { Ruler, Weight, Activity, ChevronDown, ChevronUp, Trash2 } from "lucide-react"
+import { Ruler, Weight, Activity, ChevronDown, ChevronUp, Trash2, MapPin } from "lucide-react"
 import {
     Combobox,
     ComboboxContent,
@@ -42,7 +43,7 @@ interface MetricRow {
     length: number
     weight: number
     activity: number
-    totalObject: number
+    location: string | null
 }
 
 interface DailySummary {
@@ -52,7 +53,7 @@ interface DailySummary {
     length: number
     weight: number
     activity: number
-    totalObject: number
+    location: string | null
     count: number
     details: MetricRow[]
 }
@@ -84,6 +85,9 @@ const chartConfigs = [
 
 export default function RiwayatPage() {
     const supabase = createClient()
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    const pondParam = searchParams.get("pond")
 
     const [ponds, setPonds] = useState<PondOption[]>([])
     const [selectedPondName, setSelectedPondName] = useState<string>("")
@@ -128,7 +132,12 @@ export default function RiwayatPage() {
                 return numA - numB
             })
             setPonds(sorted)
-            if (sorted.length > 0) setSelectedPondName(sorted[0].name)
+            // If ?pond= query param is present, auto-select that pond
+            if (pondParam && sorted.some(p => p.name === pondParam)) {
+                setSelectedPondName(pondParam)
+            } else if (sorted.length > 0) {
+                setSelectedPondName(sorted[0].name)
+            }
         }
         fetchPonds()
     }, [])
@@ -138,7 +147,7 @@ export default function RiwayatPage() {
         if (!selectedPondId) return
         const { data, error } = await supabase
             .from("pond_metrics")
-            .select("id, avg_body_length_cm, avg_body_weight_g, activity_level_pct, recorded_at, total_object")
+            .select("id, avg_body_length_cm, avg_body_weight_g, activity_level_pct, recorded_at, location")
             .eq("pond_id", selectedPondId)
             .order("recorded_at", { ascending: true })
         if (error) {
@@ -155,7 +164,7 @@ export default function RiwayatPage() {
                 length: m.avg_body_length_cm ?? 0,
                 weight: m.avg_body_weight_g ?? 0,
                 activity: m.activity_level_pct ?? 0,
-                totalObject: m.total_object ?? 0,
+                location: m.location ?? null,
             }
         })
         setMetricsData(formatted)
@@ -218,7 +227,6 @@ export default function RiwayatPage() {
             const avgLength = rows.reduce((s, r) => s + r.length, 0) / count
             const avgWeight = rows.reduce((s, r) => s + r.weight, 0) / count
             const avgActivity = rows.reduce((s, r) => s + r.activity, 0) / count
-            const avgTotalObject = rows.reduce((s, r) => s + r.totalObject, 0) / count
 
             let doc: number | null = null
             if (stockingDate) {
@@ -232,7 +240,7 @@ export default function RiwayatPage() {
                 length: Math.round(avgLength * 100) / 100,
                 weight: Math.round(avgWeight * 100) / 100,
                 activity: Math.round(avgActivity * 100) / 100,
-                totalObject: Math.round(avgTotalObject),
+                location: rows[0].location,
                 count,
                 details: rows,
             }
@@ -411,9 +419,6 @@ export default function RiwayatPage() {
                                             Kolam
                                         </th>
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap">
-                                            Total Objek
-                                        </th>
-                                        <th className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap">
                                             Avg Body Length
                                         </th>
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap">
@@ -425,8 +430,11 @@ export default function RiwayatPage() {
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground text-center whitespace-nowrap">
                                             Rincian
                                         </th>
-                                        <th className="pb-3 font-medium text-muted-foreground text-center whitespace-nowrap">
+                                        <th className="pb-3 pr-4 font-medium text-muted-foreground text-center whitespace-nowrap">
                                             Aksi
+                                        </th>
+                                        <th className="pb-3 font-medium text-muted-foreground text-center whitespace-nowrap">
+                                            Lokasi
                                         </th>
                                     </tr>
                                 </thead>
@@ -444,9 +452,6 @@ export default function RiwayatPage() {
                                                     </td>
                                                     <td className="py-3 pr-4 text-muted-foreground whitespace-nowrap">
                                                         {selectedPondName}
-                                                    </td>
-                                                    <td className="py-3 pr-4 text-foreground">
-                                                        {summary.totalObject}
                                                     </td>
                                                     <td className="py-3 pr-4 text-foreground whitespace-nowrap">
                                                         {summary.length} cm
@@ -468,7 +473,7 @@ export default function RiwayatPage() {
                                                             {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                                         </Button>
                                                     </td>
-                                                    <td className="py-3 text-center">
+                                                    <td className="py-3 pr-4 text-center">
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
@@ -477,6 +482,25 @@ export default function RiwayatPage() {
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </Button>
+                                                    </td>
+                                                    <td className="py-3 text-center">
+                                                        {summary.details[0]?.location ? (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const loc = summary.details[0].location!;
+                                                                    const match = loc.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+                                                                    if (match) {
+                                                                        router.push(`/webgis?highlight_lat=${match[2]}&highlight_lng=${match[1]}`);
+                                                                    }
+                                                                }}
+                                                                className="inline-flex items-center justify-center w-7 h-7 rounded-md text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                                                                title="Lihat di WebGIS"
+                                                            >
+                                                                <MapPin className="w-4 h-4" />
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-muted-foreground text-xs">—</span>
+                                                        )}
                                                     </td>
                                                 </tr>
                                                 {isExpanded && summary.details.map((detail, idx) => (
@@ -492,9 +516,6 @@ export default function RiwayatPage() {
                                                         </td>
                                                         <td className="py-2 pr-4 text-muted-foreground text-xs whitespace-nowrap">
                                                             {selectedPondName}
-                                                        </td>
-                                                        <td className="py-2 pr-4 text-foreground text-xs">
-                                                            {detail.totalObject}
                                                         </td>
                                                         <td className="py-2 pr-4 text-foreground text-xs whitespace-nowrap">
                                                             {detail.length} cm
@@ -515,6 +536,25 @@ export default function RiwayatPage() {
                                                             >
                                                                 <Trash2 className="w-3 h-3" />
                                                             </Button>
+                                                        </td>
+                                                        <td className="py-2 text-center">
+                                                            {detail.location ? (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const loc = detail.location!;
+                                                                        const match = loc.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+                                                                        if (match) {
+                                                                            router.push(`/webgis?highlight_lat=${match[2]}&highlight_lng=${match[1]}`);
+                                                                        }
+                                                                    }}
+                                                                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-emerald-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                                                                    title="Lihat di WebGIS"
+                                                                >
+                                                                    <MapPin className="w-3 h-3" />
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-muted-foreground text-xs">—</span>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 ))}

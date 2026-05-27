@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes that require authentication
-const protectedRoutes = ['/dashboard', '/account', '/riwayat', '/webgis', '/chat-agent']
+const protectedRoutes = ['/dashboard', '/account', '/riwayat', '/webgis', '/chat-agent', '/settings']
 
 // Routes that should redirect to /dashboard if already logged in
 const authRoutes = ['/login', '/register']

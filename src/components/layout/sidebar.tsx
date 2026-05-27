@@ -177,13 +177,13 @@ export function Sidebar() {
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
-                                <Link href="#" className="cursor-pointer">
+                                <Link href="/account" className="cursor-pointer">
                                     <UserPen className="w-4 h-4" />
                                     Profil
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                                <Link href="#" className="cursor-pointer">
+                                <Link href="/admin" className="cursor-pointer">
                                     <MonitorCog className="w-4 h-4" />
                                     Admin Panel
                                 </Link>

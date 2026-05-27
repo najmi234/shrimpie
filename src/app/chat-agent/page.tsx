@@ -28,19 +28,17 @@ import {
 import { Button } from "@/components/ui/button"
 import { Suspense } from "react"
 
-interface DeviceMetric {
-    device_id: string
+interface PondMetric {
+    pond_id: string
     avg_body_length_cm: number
     avg_body_weight_g: number
     activity_level_pct: number
     recorded_at: string
 }
 
-interface DeviceStatus {
+interface PondOption {
     id: string
     name: string
-    status: string
-    last_update_at: string
 }
 
 function ChatAgentContent() {
@@ -48,9 +46,9 @@ function ChatAgentContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
 
-    const [metrics, setMetrics] = useState<DeviceMetric[]>([])
-    const [deviceStatusList, setDeviceStatusList] = useState<DeviceStatus[]>([])
-    const [selectedDeviceName, setSelectedDeviceName] = useState<string>("")
+    const [metrics, setMetrics] = useState<PondMetric[]>([])
+    const [pondList, setPondList] = useState<PondOption[]>([])
+    const [selectedPondName, setSelectedPondName] = useState<string>("")
     const [loading, setLoading] = useState(true)
 
     // ─── User & Conversation state ──────────────────────────
@@ -86,29 +84,21 @@ function ChatAgentContent() {
         }
     }, [activeConversationId, initialLoadDone])
 
-    // Derive unique device names from Supabase devices
-    const devices = useMemo(() => {
-        const activeDevices = deviceStatusList.filter(
-            (d) => d.status === "Active"
-        )
-        return activeDevices.map((d) => d.name) as readonly string[]
-    }, [deviceStatusList])
+    // Derive pond names for combobox
+    const pondNames = useMemo(() => {
+        return pondList.map((p) => p.name) as readonly string[]
+    }, [pondList])
 
-    // Map device_name → device_id
-    const deviceIdMap = useMemo(() => {
+    // Map pond_name → pond_id
+    const pondIdMap = useMemo(() => {
         const map: Record<string, string> = {}
-        deviceStatusList.forEach((d) => {
-            if (!map[d.name]) map[d.name] = d.id
+        pondList.forEach((p) => {
+            if (!map[p.name]) map[p.name] = p.id
         })
         return map
-    }, [deviceStatusList])
+    }, [pondList])
 
-    const selectedDeviceId = deviceIdMap[selectedDeviceName] || ""
-
-    // Find device status for selected device
-    const selectedDeviceStatus = useMemo(() => {
-        return deviceStatusList.find((d) => d.id === selectedDeviceId)
-    }, [deviceStatusList, selectedDeviceId])
+    const selectedPondId = pondIdMap[selectedPondName] || ""
 
     // ─── Fetch current user ─────────────────────────────────
     useEffect(() => {
@@ -142,39 +132,42 @@ function ChatAgentContent() {
         loadConversations()
     }, [loadConversations])
 
-    // ─── Fetch active devices from Supabase ─────────────────
+    // ─── Fetch ponds from Supabase ─────────────────
     useEffect(() => {
-        async function fetchDevices() {
+        async function fetchPonds() {
             const { data, error } = await supabase
-                .from("devices")
-                .select("id, name, status, last_update_at")
+                .from("ponds")
+                .select("id, name")
+                .order("name")
             if (error) {
-                console.error("Failed to fetch devices:", error)
+                console.error("Failed to fetch ponds:", error)
                 return
             }
-            setDeviceStatusList(data ?? [])
-            const activeDevices = (data ?? []).filter(
-                (d) => d.status === "Active"
-            )
-            if (activeDevices.length > 0) {
-                setSelectedDeviceName(activeDevices[0].name)
+            const sorted = (data ?? []).sort((a, b) => {
+                const numA = parseInt(a.name.match(/\d+/)?.[0] || "0")
+                const numB = parseInt(b.name.match(/\d+/)?.[0] || "0")
+                return numA - numB
+            })
+            setPondList(sorted)
+            if (sorted.length > 0) {
+                setSelectedPondName(sorted[0].name)
             }
         }
-        fetchDevices()
+        fetchPonds()
     }, [])
 
-    // ─── Fetch device_metrics when selected device changes ──
+    // ─── Fetch pond_metrics when selected pond changes ──
     useEffect(() => {
-        if (!selectedDeviceId) return
+        if (!selectedPondId) return
         setLoading(true)
         async function fetchMetrics() {
             const { data, error } = await supabase
-                .from("device_metrics")
+                .from("pond_metrics")
                 .select("*")
-                .eq("device_id", selectedDeviceId)
+                .eq("pond_id", selectedPondId)
                 .order("recorded_at", { ascending: true })
             if (error) {
-                console.error("Failed to fetch device metrics:", error)
+                console.error("Failed to fetch pond metrics:", error)
                 setLoading(false)
                 return
             }
@@ -182,7 +175,7 @@ function ChatAgentContent() {
             setLoading(false)
         }
         fetchMetrics()
-    }, [selectedDeviceId])
+    }, [selectedPondId])
 
     // Build parameters from latest metric
     const latestMetric =
@@ -191,9 +184,7 @@ function ChatAgentContent() {
         avg_weight: latestMetric?.avg_body_weight_g ?? 0,
         avg_length: latestMetric?.avg_body_length_cm ?? 0,
         activity_level: latestMetric?.activity_level_pct ?? 0,
-        deviceName: selectedDeviceName || undefined,
-        deviceStatus: selectedDeviceStatus?.status || undefined,
-        lastUpdated: selectedDeviceStatus?.last_update_at || undefined,
+        pondName: selectedPondName || undefined,
         metricsHistory: metrics,
     }
 
@@ -226,7 +217,7 @@ function ChatAgentContent() {
                 id,
                 user_id: userId!,
                 device_id: null,
-                device_name: selectedDeviceName || null,
+                device_name: selectedPondName || null,
                 title,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
@@ -368,21 +359,21 @@ function ChatAgentContent() {
                         </Button>
 
                         <span className="text-sm font-medium text-muted-foreground shrink-0">
-                            Device:
+                            Pond:
                         </span>
                         <div className="w-64">
                             <Combobox
-                                items={devices}
-                                value={selectedDeviceName}
+                                items={pondNames}
+                                value={selectedPondName}
                                 onValueChange={(val) => {
                                     if (val === null) return
-                                    setSelectedDeviceName(val)
+                                    setSelectedPondName(val)
                                 }}
                             >
-                                <ComboboxInput className="w-full bg-background border-border" placeholder="Pilih Device" />
+                                <ComboboxInput className="w-full bg-background border-border" placeholder="Pilih Kolam" />
                                 <ComboboxContent>
                                     <ComboboxEmpty>
-                                        Tidak ada device.
+                                        Tidak ada kolam.
                                     </ComboboxEmpty>
                                     <ComboboxList>
                                         {(item) => (

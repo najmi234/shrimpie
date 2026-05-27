@@ -143,16 +143,20 @@ export default function ShrimpMonitoringDashboard() {
     return videos.filter((v) => v.pond_name === selectedPondName)
   }, [videos, selectedPondName])
 
-  // Fetch videos from API
+  // Fetch videos from Supabase
   useEffect(() => {
     async function fetchVideos() {
       try {
-        const res = await fetch("https://shrimpie.qzz.io/videos")
-        const data: VideoEntry[] = await res.json()
-        setVideos(data)
-        if (data.length > 0) {
-          setSelectedPondName(data[0].pond_name)
-          setSelectedVideoUrl(data[0].file_url)
+        const { data, error } = await supabase
+          .from("videos")
+          .select("pond_id, pond_name, file_url, recorded_at")
+          .order("recorded_at", { ascending: false })
+        if (error) throw error
+        const videos = (data ?? []) as VideoEntry[]
+        setVideos(videos)
+        if (videos.length > 0) {
+          setSelectedPondName(videos[0].pond_name)
+          setSelectedVideoUrl(videos[0].file_url)
         }
       } catch (err) {
         console.error("Failed to fetch videos:", err)

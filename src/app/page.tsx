@@ -410,12 +410,12 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link href="/dashboard">
+            <Link href="/login">
               <Button variant="outline" size="sm" className="rounded-full">
                 Masuk
               </Button>
             </Link>
-            <Link href="/dashboard">
+            <Link href="/register">
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button size="sm" className="rounded-full">
                   Daftar
