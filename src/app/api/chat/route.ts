@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { searchDocuments } from "@/lib/rag/embeddings.server";
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { chatRateLimiter } from "@/lib/rate-limit";
 
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
@@ -16,7 +18,69 @@ function getSupabaseAdmin() {
     return createClient(url, key);
 }
 
+/**
+ * Authenticate the request using Supabase session cookies.
+ * Returns the user object if authenticated, or null.
+ */
+async function authenticateRequest(): Promise<{ id: string } | null> {
+    try {
+        const supabase = await createServerClient();
+        const {
+            data: { user },
+            error,
+        } = await supabase.auth.getUser();
+
+        if (error || !user) {
+            return null;
+        }
+
+        return { id: user.id };
+    } catch {
+        return null;
+    }
+}
+
 export async function POST(req: Request) {
+    // ─── 1. Autentikasi: Validasi user session ──────────────
+    const user = await authenticateRequest();
+
+    if (!user) {
+        return new Response(
+            JSON.stringify({
+                error: "Unauthorized. Silakan login terlebih dahulu.",
+            }),
+            {
+                status: 401,
+                headers: { "Content-Type": "application/json" },
+            }
+        );
+    }
+
+    // ─── 2. Rate Limiting: Cek batas request per user ───────
+    const rateLimitResult = chatRateLimiter.check(user.id);
+
+    if (!rateLimitResult.allowed) {
+        const retryAfterSeconds = Math.ceil(
+            (rateLimitResult.resetAt - Date.now()) / 1000
+        );
+        return new Response(
+            JSON.stringify({
+                error: `Terlalu banyak permintaan. Silakan tunggu ${retryAfterSeconds} detik sebelum mencoba lagi.`,
+            }),
+            {
+                status: 429,
+                headers: {
+                    "Content-Type": "application/json",
+                    "Retry-After": String(retryAfterSeconds),
+                    "X-RateLimit-Limit": "20",
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": String(rateLimitResult.resetAt),
+                },
+            }
+        );
+    }
+
+    // ─── 3. Proses chat request ─────────────────────────────
     try {
         const { messages, parameters, conversationId } = await req.json();
 
@@ -47,6 +111,7 @@ export async function POST(req: Request) {
                     "Content-Type": "text/event-stream",
                     "Cache-Control": "no-cache",
                     Connection: "keep-alive",
+                    "X-RateLimit-Remaining": String(rateLimitResult.remaining),
                 },
             });
         }
@@ -206,6 +271,7 @@ ${ragContext}
                 "Content-Type": "text/event-stream",
                 "Cache-Control": "no-cache",
                 Connection: "keep-alive",
+                "X-RateLimit-Remaining": String(rateLimitResult.remaining),
             },
         });
     } catch (error: any) {
