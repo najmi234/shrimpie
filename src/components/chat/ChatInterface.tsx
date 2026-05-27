@@ -94,14 +94,14 @@ function buildWelcomeMessage(parameters: PondParameters): ChatMessage {
     return {
         id: "welcome",
         role: "assistant",
-        content: `Hello! I am your **Shrimpie Advisor**.${parameters.pondName ? ` I have analyzed the data from the **${parameters.pondName}** pond.` : ""}
+        content: `Halo! Saya adalah **Shrimpie Advisor** Anda.${parameters.pondName ? ` Saya telah menganalisis data dari kolam **${parameters.pondName}**.` : ""}
 
-**Current Pond Parameters:**
-- Average Weight: **${parameters.avg_weight.toFixed(1)} grams**
-- Average Length: **${parameters.avg_length.toFixed(1)} cm**
-- Activity Level: **${parameters.activity_level.toFixed(1)} px/s**
+**Parameter Kolam Saat Ini:**
+- Rata-rata Berat: **${parameters.avg_weight.toFixed(1)} gram**
+- Rata-rata Panjang: **${parameters.avg_length.toFixed(1)} cm**
+- Tingkat Keaktifan: **${parameters.activity_level.toFixed(1)} px/s**
 
-Is there anything I can help you with regarding your shrimp management today?`,
+Ada yang bisa saya bantu terkait penanganan udang Anda hari ini?`,
         createdAt: new Date(),
     };
 }
@@ -363,7 +363,7 @@ export default function ChatInterface({
 
     const metricCards = [
         {
-            label: "Average Weight",
+            label: "Rata-rata Berat",
             value: parameters.avg_weight.toFixed(1),
             unit: "gram",
             icon: Weight,
@@ -371,7 +371,7 @@ export default function ChatInterface({
             bg: "bg-amber-500/10",
         },
         {
-            label: "Average Length",
+            label: "Rata-rata Panjang",
             value: parameters.avg_length.toFixed(1),
             unit: "cm",
             icon: Ruler,
@@ -379,7 +379,7 @@ export default function ChatInterface({
             bg: "bg-green-500/10",
         },
         {
-            label: "Activity Level",
+            label: "Tingkat Keaktifan",
             value: parameters.activity_level.toFixed(1),
             unit: "px/s",
             icon: Activity,
@@ -399,7 +399,7 @@ export default function ChatInterface({
                             <div className="flex items-center gap-1.5 bg-background border border-border/50 rounded-full px-3 py-1 shadow-sm">
                                 <Circle className="w-2 h-2 fill-current text-teal-500" />
                                 <span className="text-xs font-medium text-foreground">
-                                    Pond {parameters.pondName}
+                                    Kolam {parameters.pondName}
                                 </span>
                             </div>
                         )}
@@ -444,7 +444,7 @@ export default function ChatInterface({
 
                             <div className={`flex flex-col gap-1 min-w-0 ${message.role === "user" ? "items-end" : "items-start"}`}>
                                 <span className="text-xs text-muted-foreground px-1">
-                                    {message.role === "user" ? "You" : "Shrimpie Advisor"}
+                                    {message.role === "user" ? "Anda" : "Shrimpie Advisor"}
                                 </span>
                                 <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm prose dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 ${message.role === "user"
                                     ? "bg-primary text-primary-foreground rounded-tr-sm"
@@ -496,7 +496,7 @@ export default function ChatInterface({
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Ask about shrimp management recommendations, feed quality, etc..."
+                            placeholder="Tanyakan tentang rekomendasi pengelolaan udang, kualitas pakan, dll..."
                             className="min-h-[44px] max-h-[160px] resize-none border-0 bg-transparent py-3 px-4 shadow-none focus-visible:ring-0 w-full"
                             rows={1}
                         />
@@ -511,7 +511,7 @@ export default function ChatInterface({
                         </Button>
                     </div>
                     <div className="text-center mt-2 text-[10px] text-muted-foreground">
-                        AI Advisor can make mistakes. Always verify important recommendations with an expert.
+                        AI Advisor dapat melakukan kesalahan. Selalu verifikasi rekomendasi penting dengan ahli.
                     </div>
                 </div>
             </div>

@@ -4,6 +4,34 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { chatRateLimiter } from "@/lib/rate-limit";
 
+import { z } from "zod";
+
+const messageSchema = z.object({
+    role: z.enum(["user", "assistant", "system"]),
+    content: z.string().min(1, "Pesan tidak boleh kosong"),
+});
+
+const metricHistoryItemSchema = z.object({
+    avg_body_weight_g: z.number(),
+    avg_body_length_cm: z.number(),
+    activity_level_pct: z.number(),
+    recorded_at: z.string(),
+});
+
+const parametersSchema = z.object({
+    avg_weight: z.number(),
+    avg_length: z.number(),
+    activity_level: z.number(),
+    pondName: z.string().optional().nullable(),
+    metricsHistory: z.array(metricHistoryItemSchema).optional().nullable(),
+});
+
+const requestSchema = z.object({
+    messages: z.array(messageSchema).min(1, "Riwayat percakapan tidak boleh kosong"),
+    parameters: parametersSchema,
+    conversationId: z.string().uuid("ID percakapan tidak valid").optional().nullable(),
+});
+
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -80,9 +108,24 @@ export async function POST(req: Request) {
         );
     }
 
-    // ─── 3. Proses chat request ─────────────────────────────
+    // ─── 3. Proses & Validasi chat request ──────────────────
     try {
-        const { messages, parameters, conversationId } = await req.json();
+        const body = await req.json();
+        const validationResult = requestSchema.safeParse(body);
+
+        if (!validationResult.success) {
+            return new Response(
+                JSON.stringify({
+                    error: "Format data tidak valid: " + validationResult.error.issues.map(e => e.message).join(", "),
+                }),
+                {
+                    status: 400,
+                    headers: { "Content-Type": "application/json" },
+                }
+            );
+        }
+
+        const { messages, parameters, conversationId } = validationResult.data;
 
         if (!process.env.GEMINI_API_KEY) {
             console.warn("GEMINI_API_KEY is not set. Using mock response.");
