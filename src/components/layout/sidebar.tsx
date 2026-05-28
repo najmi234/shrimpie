@@ -69,7 +69,7 @@ export function Sidebar() {
             )}
 
             <aside
-                className={`bg-sidebar border-r border-sidebar-border h-screen flex flex-col fixed left-0 top-0 transition-all duration-300 z-30 ${collapsed ? "w-[72px]" : "w-64"} ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+                className={`bg-sidebar border-r border-sidebar-border h-dvh flex flex-col fixed left-0 top-0 transition-all duration-300 z-30 ${collapsed ? "w-[72px]" : "w-64"} ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
             >
                 <div className="h-16 flex items-center px-6 font-bold text-xl text-sidebar-foreground justify-center relative">
                     {collapsed ? (

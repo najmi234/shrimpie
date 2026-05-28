@@ -266,7 +266,7 @@ function ChatAgentContent() {
     }
 
     return (
-        <div className="flex h-[calc(100vh-4rem)]">
+        <div className="flex h-[calc(100dvh-4rem)]">
             {/* ─── Conversation Sidebar ─────────────────────── */}
             <div
                 className={`${sidebarOpen ? "w-72" : "w-0"
@@ -433,7 +433,7 @@ export default function ChatAgentPage() {
     return (
         <Suspense
             fallback={
-                <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+                <div className="flex items-center justify-center h-[calc(100dvh-4rem)]">
                     <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                 </div>
             }

@@ -11,7 +11,7 @@ export default function AccountLayout({
 }) {
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen bg-background">
+            <div className="flex min-h-dvh bg-background">
                 <Sidebar />
                 <DashboardContent>
                     <Navbar />
