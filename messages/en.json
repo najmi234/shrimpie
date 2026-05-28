@@ -25,7 +25,10 @@
     "hero": {
       "badge": "Smart Solution for Shrimp Farming",
       "titleLine1": "Revolutionize Shrimp Farming with",
-      "typingWords": ["Artificial Intelligence", "Kecerdasan Buatan"],
+      "typingWords": [
+        "Artificial Intelligence",
+        "Kecerdasan Buatan"
+      ],
       "description": "Real-time monitoring of Vannamei shrimp growth using Computer Vision and precision IoT control.",
       "ctaDashboard": "Open Dashboard",
       "ctaLearnMore": "Learn Our Technology"
@@ -252,7 +255,7 @@
     "noHistory": "No conversation history yet",
     "untitledConversation": "Untitled conversation",
     "deleteConversation": "Delete conversation",
-    "pond": "Pond:",
+    "pond": "Pond",
     "selectPondPlaceholder": "Select Pond",
     "noPonds": "No ponds available.",
     "closeSidebar": "Close sidebar",
@@ -265,6 +268,8 @@
   "settings": {
     "title": "Settings",
     "description": "Manage shrimp monitoring application settings",
+    "unauthorizedTitle": "Access Restricted",
+    "unauthorizedDescription": "We apologize, but only Administrators have access rights to manage pond and device settings.",
     "pondSettings": {
       "label": "Pond Settings",
       "description": "Manage pond data, stocking dates, and pond names",

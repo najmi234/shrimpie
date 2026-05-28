@@ -16,6 +16,7 @@ import {
     Pencil,
     Trash2,
     Plus,
+    Shield,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -86,6 +87,31 @@ export default function SettingsPage() {
     ]
 
     const [activeCategory, setActiveCategory] = useState<string | null>(null)
+    const [authorized, setAuthorized] = useState<boolean | null>(null)
+
+    // ----- Check user authorization -----
+    useEffect(() => {
+        async function checkRole() {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
+                setAuthorized(false)
+                return
+            }
+
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("user_role")
+                .eq("id", user.id)
+                .single()
+
+            if (profile?.user_role === "admin") {
+                setAuthorized(true)
+            } else {
+                setAuthorized(false)
+            }
+        }
+        checkRole()
+    }, [supabase])
 
     // ----- Pond state -----
     const [ponds, setPonds] = useState<Pond[]>([])
@@ -765,6 +791,47 @@ export default function SettingsPage() {
 
     // ----- Active category info -----
     const activeCat = categories.find((c) => c.id === activeCategory)
+
+    if (authorized === null) {
+        return (
+            <div className="flex h-[50vh] items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        )
+    }
+
+    if (!authorized) {
+        return (
+            <div className="container mx-auto max-w-2xl pt-10">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                >
+                    <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+                        <CardContent className="p-8 flex flex-col items-center text-center space-y-6">
+                            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                                <motion.div
+                                    animate={{ scale: [1, 1.05, 1] }}
+                                    transition={{ duration: 3, repeat: Infinity }}
+                                >
+                                    <Shield className="w-8 h-8" />
+                                </motion.div>
+                            </div>
+                            <div className="space-y-2">
+                                <h2 className="text-xl font-bold text-foreground">
+                                    {t("unauthorizedTitle")}
+                                </h2>
+                                <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
+                                    {t("unauthorizedDescription")}
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            </div>
+        )
+    }
 
     return (
         <div className="container mx-auto max-w-4xl space-y-6">

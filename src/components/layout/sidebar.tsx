@@ -23,7 +23,7 @@ export function Sidebar() {
     const router = useRouter()
     const t = useTranslations("sidebar")
 
-    const [user, setUser] = useState<{ email: string; name: string } | null>(null)
+    const [user, setUser] = useState<{ email: string; name: string; role?: string } | null>(null)
 
     // Close mobile sidebar when route changes
     useEffect(() => {
@@ -32,14 +32,23 @@ export function Sidebar() {
 
     useEffect(() => {
         const supabase = createClient()
-        supabase.auth.getUser().then(({ data: { user } }) => {
+        async function fetchUserAndRole() {
+            const { data: { user } } = await supabase.auth.getUser()
             if (user) {
+                const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("user_role")
+                    .eq("id", user.id)
+                    .single()
+
                 setUser({
                     email: user.email ?? "",
                     name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "User",
+                    role: profile?.user_role ?? "guest"
                 })
             }
-        })
+        }
+        fetchUserAndRole()
     }, [])
 
     const userInitial = user?.name?.charAt(0)?.toUpperCase() || "U"
@@ -184,12 +193,14 @@ export function Sidebar() {
                                     {t("profile")}
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/admin" className="cursor-pointer">
-                                    <MonitorCog className="w-4 h-4" />
-                                    {t("adminPanel")}
-                                </Link>
-                            </DropdownMenuItem>
+                            {user?.role === "admin" && (
+                                <DropdownMenuItem asChild>
+                                    <Link href="/admin" className="cursor-pointer">
+                                        <MonitorCog className="w-4 h-4" />
+                                        {t("adminPanel")}
+                                    </Link>
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                                 variant="destructive"

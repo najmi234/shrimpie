@@ -29,6 +29,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { useTranslations, useLocale } from "next-intl"
+import { useRouter } from "next/navigation"
 
 // ---------- types ----------
 
@@ -50,6 +51,7 @@ const ROLE_OPTIONS = [
 // ---------- component ----------
 
 export default function AdminPage() {
+    const router = useRouter()
     const supabase = createClient()
     const locale = useLocale()
     const t = useTranslations("admin")
@@ -57,6 +59,7 @@ export default function AdminPage() {
     const tAccount = useTranslations("account")
     const [users, setUsers] = useState<UserProfile[]>([])
     const [loading, setLoading] = useState(true)
+    const [authorized, setAuthorized] = useState<boolean | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
     const [roleChangeTarget, setRoleChangeTarget] = useState<{ user: UserProfile; newRole: string } | null>(null)
     const [roleChangeLoading, setRoleChangeLoading] = useState(false)
@@ -64,19 +67,32 @@ export default function AdminPage() {
     const [expandedId, setExpandedId] = useState<string | null>(null)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
-    // ----- Fetch current user -----
+    // ----- Check admin role and fetch profiles -----
     useEffect(() => {
-        async function fetchCurrentUser() {
-            const { data: { user } } = await supabase.auth.getUser()
-            setCurrentUserId(user?.id ?? null)
-        }
-        fetchCurrentUser()
-    }, [])
-
-    // ----- Fetch all profiles -----
-    useEffect(() => {
-        async function fetchUsers() {
+        async function checkAdminAndFetchData() {
             setLoading(true)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
+                router.replace("/login")
+                return
+            }
+            setCurrentUserId(user.id)
+
+            // Check if user is admin
+            const { data: profile, error: profileError } = await supabase
+                .from("profiles")
+                .select("user_role")
+                .eq("id", user.id)
+                .single()
+
+            if (profileError || !profile || profile.user_role !== "admin") {
+                router.replace("/dashboard")
+                return
+            }
+
+            setAuthorized(true)
+
+            // Authorized, fetch all profiles
             const { data, error } = await supabase
                 .from("profiles")
                 .select("id, username, avatar_url, birth_date, gender, user_role")
@@ -84,14 +100,14 @@ export default function AdminPage() {
 
             if (error) {
                 console.error("Failed to fetch profiles:", error)
-                setLoading(false)
-                return
+            } else {
+                setUsers(data ?? [])
             }
-            setUsers(data ?? [])
             setLoading(false)
         }
-        fetchUsers()
-    }, [])
+
+        checkAdminAndFetchData()
+    }, [router, supabase])
 
     // ----- Role change handler -----
     const handleRoleChange = async () => {
@@ -143,6 +159,18 @@ export default function AdminPage() {
         if (role === "admin") return { label: t("administrator"), color: "bg-amber-500/10 text-amber-600 border-amber-500/30" }
         if (role === "guest") return { label: t("guest"), color: "bg-blue-500/10 text-blue-600 border-blue-500/30" }
         return { label: role || "-", color: "bg-muted text-muted-foreground border-border" }
+    }
+
+    if (authorized === null) {
+        return (
+            <div className="flex h-[50vh] items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        )
+    }
+
+    if (!authorized) {
+        return null
     }
 
     return (
