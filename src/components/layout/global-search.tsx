@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Search, Home, Activity, Map, MessageSquareText, Settings } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import {
     CommandDialog,
@@ -22,6 +23,7 @@ export function GlobalSearch({
     setOpen: (open: boolean) => void
 }) {
     const router = useRouter()
+    const t = useTranslations("globalSearch")
 
     React.useEffect(() => {
         const down = (e: KeyboardEvent) => {
@@ -43,38 +45,38 @@ export function GlobalSearch({
     return (
         <>
             <CommandDialog open={open} onOpenChange={setOpen}>
-                <CommandInput placeholder="Type a command or search..." />
+                <CommandInput placeholder={t("placeholder")} />
                 <CommandList>
-                    <CommandEmpty>No results found.</CommandEmpty>
-                    <CommandGroup heading="Pages">
+                    <CommandEmpty>{t("noResults")}</CommandEmpty>
+                    <CommandGroup heading={t("pages")}>
                         <CommandItem
                             onSelect={() => runCommand(() => router.push("/dashboard"))}
                         >
                             <Home className="mr-2 h-4 w-4" />
-                            <span>Dashboard</span>
+                            <span>{t("dashboard")}</span>
                         </CommandItem>
                         <CommandItem
                             onSelect={() => runCommand(() => router.push("/webgis"))}
                         >
                             <Map className="mr-2 h-4 w-4" />
-                            <span>WebGIS Tracker</span>
+                            <span>{t("webgisTracker")}</span>
                         </CommandItem>
                         <CommandItem
                             onSelect={() => runCommand(() => router.push("/chat-agent"))}
                         >
                             <MessageSquareText className="mr-2 h-4 w-4" />
-                            <span>Chat Advisor</span>
+                            <span>{t("chatAdvisor")}</span>
                         </CommandItem>
                     </CommandGroup>
                     <CommandSeparator />
-                    <CommandGroup heading="Quick Actions">
+                    <CommandGroup heading={t("quickActions")}>
                         <CommandItem>
                             <Activity className="mr-2 h-4 w-4" />
-                            <span>View Latest Metrics</span>
+                            <span>{t("viewLatestMetrics")}</span>
                         </CommandItem>
                         <CommandItem>
                             <Settings className="mr-2 h-4 w-4" />
-                            <span>Settings</span>
+                            <span>{t("settings")}</span>
                         </CommandItem>
                     </CommandGroup>
                 </CommandList>

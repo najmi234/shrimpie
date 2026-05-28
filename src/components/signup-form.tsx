@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Mail,
 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { signup } from '@/app/login/actions'
 import { Button } from '@/components/ui/button'
@@ -34,21 +35,6 @@ import {
 } from '@/components/ui/field'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
-// ── Schema ─────────────────────────────────────────────────────────────
-const signupSchema = z
-  .object({
-    name: z.string().min(1, 'Nama lengkap harus diisi'),
-    email: z.email('Masukkan alamat email yang valid'),
-    password: z.string().min(8, 'Password minimal 8 karakter'),
-    confirmPassword: z.string().min(1, 'Konfirmasi password harus diisi'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Password dan konfirmasi password tidak cocok',
-    path: ['confirmPassword'],
-  })
-
-type SignupValues = z.infer<typeof signupSchema>
-
 import { createClient } from '@/lib/supabase/client'
 
 // ── Component ──────────────────────────────────────────────────────────
@@ -58,6 +44,22 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
   const [serverError, setServerError] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const t = useTranslations('signup')
+
+  // ── Schema (inside component for i18n) ─────────────────────────────
+  const signupSchema = z
+    .object({
+      name: z.string().min(1, t('validationName')),
+      email: z.email(t('validationEmail')),
+      password: z.string().min(8, t('validationPassword')),
+      confirmPassword: z.string().min(1, t('validationConfirmPassword')),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t('validationPasswordMatch'),
+      path: ['confirmPassword'],
+    })
+
+  type SignupValues = z.infer<typeof signupSchema>
 
   const {
     register,
@@ -95,7 +97,7 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
         setServerError(error.message)
       }
     } catch (err: any) {
-      setServerError('Terjadi kesalahan saat mendaftar dengan Google.')
+      setServerError(t('googleError'))
     } finally {
       setGoogleLoading(false)
     }
@@ -109,29 +111,28 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
           <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Mail className="size-6" />
           </div>
-          <CardTitle>Cek Email Anda</CardTitle>
+          <CardTitle>{t('successTitle')}</CardTitle>
           <CardDescription>
-            Kami telah mengirimkan link verifikasi ke email Anda. Silakan buka
-            inbox dan klik link tersebut untuk mengaktifkan akun.
+            {t('successDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Alert>
             <CheckCircle2 className="size-4" />
-            <AlertTitle>Registrasi berhasil!</AlertTitle>
+            <AlertTitle>{t('successAlert')}</AlertTitle>
             <AlertDescription>
-              Jika email tidak ditemukan, cek folder spam atau promosi.
+              {t('successHint')}
             </AlertDescription>
           </Alert>
         </CardContent>
         <CardFooter className="justify-center">
           <p className="text-sm text-muted-foreground">
-            Sudah verifikasi?{' '}
+            {t('verifiedQuestion')}{' '}
             <Link
               href="/login"
               className="font-medium text-primary hover:underline"
             >
-              Masuk
+              {t('login')}
             </Link>
           </p>
         </CardFooter>
@@ -143,9 +144,9 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
   return (
     <Card {...props}>
       <CardHeader>
-        <CardTitle>Daftar Akun Shrimpie</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
         <CardDescription>
-          Buat akun baru untuk mulai mengelola tambak Anda
+          {t('description')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -161,11 +162,11 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
 
             {/* ── Name ──────────────────────────────────────────── */}
             <Field data-invalid={!!errors.name || undefined}>
-              <FieldLabel htmlFor="name">Nama Lengkap</FieldLabel>
+              <FieldLabel htmlFor="name">{t('nameLabel')}</FieldLabel>
               <Input
                 id="name"
                 type="text"
-                placeholder="John Doe"
+                placeholder={t('namePlaceholder')}
                 autoComplete="name"
                 disabled={isSubmitting}
                 aria-invalid={!!errors.name}
@@ -176,11 +177,11 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
 
             {/* ── Email ────────────────────────────────────────── */}
             <Field data-invalid={!!errors.email || undefined}>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <FieldLabel htmlFor="email">{t('emailLabel')}</FieldLabel>
               <Input
                 id="email"
                 type="email"
-                placeholder="nama@email.com"
+                placeholder={t('emailPlaceholder')}
                 autoComplete="email"
                 disabled={isSubmitting}
                 aria-invalid={!!errors.email}
@@ -191,7 +192,7 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
 
             {/* ── Password ─────────────────────────────────────── */}
             <Field data-invalid={!!errors.password || undefined}>
-              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <FieldLabel htmlFor="password">{t('passwordLabel')}</FieldLabel>
               <div className="relative">
                 <Input
                   id="password"
@@ -207,8 +208,8 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                   tabIndex={-1}
                   aria-label={
                     showPassword
-                      ? 'Sembunyikan password'
-                      : 'Tampilkan password'
+                      ? t('hidePassword')
+                      : t('showPassword')
                   }
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setShowPassword((v) => !v)}
@@ -220,14 +221,14 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                   )}
                 </button>
               </div>
-              <FieldDescription>Minimal 8 karakter.</FieldDescription>
+              <FieldDescription>{t('passwordMinChars')}</FieldDescription>
               <FieldError>{errors.password?.message}</FieldError>
             </Field>
 
             {/* ── Confirm Password ─────────────────────────────── */}
             <Field data-invalid={!!errors.confirmPassword || undefined}>
               <FieldLabel htmlFor="confirmPassword">
-                Konfirmasi Password
+                {t('confirmPasswordLabel')}
               </FieldLabel>
               <div className="relative">
                 <Input
@@ -244,8 +245,8 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                   tabIndex={-1}
                   aria-label={
                     showConfirm
-                      ? 'Sembunyikan password'
-                      : 'Tampilkan password'
+                      ? t('hidePassword')
+                      : t('showPassword')
                   }
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setShowConfirm((v) => !v)}
@@ -257,7 +258,7 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                   )}
                 </button>
               </div>
-              <FieldDescription>Silakan konfirmasi password Anda.</FieldDescription>
+              <FieldDescription>{t('confirmPasswordHint')}</FieldDescription>
               <FieldError>{errors.confirmPassword?.message}</FieldError>
             </Field>
 
@@ -272,10 +273,10 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="size-4 animate-spin" />
-                      Memproses…
+                      {t('submit')}…
                     </>
                   ) : (
-                    'Buat Akun'
+                    t('submit')
                   )}
                 </Button>
                 <Button
@@ -292,11 +293,11 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                       <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
                     </svg>
                   )}
-                  Daftar dengan Google
+                  {t('googleSignUp')}
                 </Button>
                 <FieldDescription className="px-6 text-center">
-                  Sudah punya akun?{' '}
-                  <Link href="/login">Masuk</Link>
+                  {t('hasAccount')}{' '}
+                  <Link href="/login">{t('login')}</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

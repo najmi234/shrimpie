@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
+import { useTranslations } from "next-intl"
+import { useLocale } from "@/lib/i18n"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -24,6 +26,7 @@ import {
   Weight,
   Activity,
   MonitorSmartphone,
+  Languages,
 } from "lucide-react"
 
 // --------------- Animation Wrappers ---------------
@@ -44,24 +47,22 @@ function FadeUp({ children, delay = 0, className = "" }: { children: React.React
   )
 }
 
-const typingWords = ["Kecerdasan Buatan", "Artificial Intelligence"]
+// typingWords moved inside TypingText component to use translations
 
-function TypingText() {
+function TypingText({ words }: { words: string[] }) {
   const [wordIndex, setWordIndex] = useState(0)
   const [text, setText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
-    const currentWord = typingWords[wordIndex]
+    const currentWord = words[wordIndex]
     let timeout: NodeJS.Timeout
 
     if (!isDeleting && text === currentWord) {
-      // Pause at full word, then start deleting
       timeout = setTimeout(() => setIsDeleting(true), 5000)
     } else if (isDeleting && text === "") {
-      // Switch to next word
       setIsDeleting(false)
-      setWordIndex((prev) => (prev + 1) % typingWords.length)
+      setWordIndex((prev) => (prev + 1) % words.length)
     } else {
       const speed = isDeleting ? 100 : 150
       timeout = setTimeout(() => {
@@ -73,7 +74,7 @@ function TypingText() {
     }
 
     return () => clearTimeout(timeout)
-  }, [text, isDeleting, wordIndex])
+  }, [text, isDeleting, wordIndex, words])
 
   return (
     <span className="inline-flex items-center">
@@ -311,38 +312,7 @@ function WaveDivider({ flip = false, className = "" }: { flip?: boolean; classNa
   )
 }
 
-// --------------- Data ---------------
-
-const features = [
-  {
-    icon: Eye,
-    title: "AI Growth Monitoring",
-    description: "Deteksi otomatis panjang dan berat udang menggunakan model YOLOv11 dan regresi presisi tinggi.",
-    color: "#22c55e",
-    gradient: "from-green-500/10 to-green-500/5",
-  },
-  {
-    icon: Wifi,
-    title: "IoT Smart Control",
-    description: "Monitoring daya listrik (PZEM-004T) dan kontrol otomatis kincir air (paddlewheel) menggunakan ESP32.",
-    color: "#f59e0b",
-    gradient: "from-orange-500/10 to-orange-500/5",
-  },
-  {
-    icon: Cpu,
-    title: "Edge Computing",
-    description: "Integrasi mulus dengan hardware Jetson Nano untuk pemrosesan video langsung di lokasi tambak.",
-    color: "#6366f1",
-    gradient: "from-indigo-500/10 to-indigo-500/5",
-  },
-  {
-    icon: BarChart3,
-    title: "Real-time Analytics",
-    description: "Visualisasi data interaktif untuk memantau kesehatan ekosistem tambak secara real-time.",
-    color: "#ec4899",
-    gradient: "from-pink-500/10 to-pink-500/5",
-  },
-]
+// --------------- Data (moved into component for i18n) ---------------
 
 const techStack = [
   { name: "Next.js", category: "Frontend" },
@@ -355,17 +325,30 @@ const techStack = [
   { name: "TensorFlow", category: "Deep Learning" },
 ]
 
-const stats = [
-  { label: "Akurasi Deteksi", value: "96.8%", icon: Eye },
-  { label: "Waktu Respons", value: "<2s", icon: Zap },
-  { label: "Device Terhubung", value: "50+", icon: MonitorSmartphone },
-  { label: "Tambak Aktif", value: "12", icon: Waves },
-]
-
 // --------------- Component ---------------
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
+  const t = useTranslations("landing")
+  const tCommon = useTranslations("common")
+  const { locale, toggleLocale } = useLocale()
+
+  const features = [
+    { icon: Eye, title: t("features.aiGrowth.title"), description: t("features.aiGrowth.description"), color: "#22c55e", gradient: "from-green-500/10 to-green-500/5" },
+    { icon: Wifi, title: t("features.iotControl.title"), description: t("features.iotControl.description"), color: "#f59e0b", gradient: "from-orange-500/10 to-orange-500/5" },
+    { icon: Cpu, title: t("features.edgeComputing.title"), description: t("features.edgeComputing.description"), color: "#6366f1", gradient: "from-indigo-500/10 to-indigo-500/5" },
+    { icon: BarChart3, title: t("features.analytics.title"), description: t("features.analytics.description"), color: "#ec4899", gradient: "from-pink-500/10 to-pink-500/5" },
+  ]
+
+  const stats = [
+    { label: t("stats.detectionAccuracy"), value: "96.8%", icon: Eye },
+    { label: t("stats.responseTime"), value: "<2s", icon: Zap },
+    { label: t("stats.connectedDevices"), value: "50+", icon: MonitorSmartphone },
+    { label: t("stats.activePonds"), value: "12", icon: Waves },
+  ]
+
+  const navItems = [t("nav.features"), t("nav.technology"), t("nav.webgis"), t("nav.about")]
+  const navHrefs = ["#fitur", "#teknologi", "#webgis", "#tentang-kami"]
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
@@ -394,10 +377,10 @@ export default function LandingPage() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
-            {["Fitur", "Teknologi", "WebGIS", "Tentang Kami"].map((item, i) => (
+            {navItems.map((item, i) => (
               <motion.a
                 key={item}
-                href={`#${item.toLowerCase().replace(/\s/g, "-")}`}
+                href={navHrefs[i]}
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative group"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -410,15 +393,24 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleLocale}
+              className="rounded-full px-2.5 gap-1.5 font-semibold text-xs"
+            >
+              <Languages className="w-4 h-4" />
+              <span>{locale === "id" ? "ID" : "EN"}</span>
+            </Button>
             <Link href="/login">
               <Button variant="outline" size="sm" className="rounded-full">
-                Masuk
+                {t("nav.login")}
               </Button>
             </Link>
             <Link href="/register">
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button size="sm" className="rounded-full">
-                  Daftar
+                  {t("nav.register")}
                 </Button>
               </motion.div>
             </Link>
@@ -471,7 +463,7 @@ export default function LandingPage() {
               <motion.div animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 2, repeat: Infinity }}>
                 <Waves className="w-4 h-4" />
               </motion.div>
-              <span>Solusi Cerdas untuk Tambak Udang</span>
+              <span>{ t("hero.badge") }</span>
             </motion.div>
           </FadeUp>
 
@@ -491,19 +483,18 @@ export default function LandingPage() {
               </motion.div>
             </div>
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight max-w-5xl mx-auto">
-              Revolusi Tambak Udang dengan
+              {t("hero.titleLine1")}
             </h1>
             <div className="min-h-[2.5rem] md:min-h-[3.5rem] lg:min-h-[4.5rem] flex items-center justify-center">
               <span className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                <TypingText />
+                <TypingText words={t.raw("hero.typingWords") as string[]} />
               </span>
             </div>
           </FadeUp>
 
           <FadeUp delay={0.2}>
             <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Monitoring pertumbuhan udang Vannamei secara real-time menggunakan
-              Computer Vision dan kontrol IoT yang presisi.
+              {t("hero.description")}
             </p>
           </FadeUp>
 
@@ -512,7 +503,7 @@ export default function LandingPage() {
               <Link href="/dashboard">
                 <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}>
                   <Button size="lg" className="rounded-full px-8 gap-2 text-base shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-shadow">
-                    Buka Dashboard
+                    {t("hero.ctaDashboard")}
                     <motion.div animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
                       <ArrowRight className="w-4 h-4" />
                     </motion.div>
@@ -522,7 +513,7 @@ export default function LandingPage() {
               <a href="#fitur">
                 <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}>
                   <Button variant="outline" size="lg" className="rounded-full px-8 text-base">
-                    Pelajari Teknologi Kami
+                    {t("hero.ctaLearnMore")}
                   </Button>
                 </motion.div>
               </a>
@@ -583,13 +574,13 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.8 }}
               >
-                Fitur Utama
+                {t("features.sectionLabel")}
               </motion.span>
               <h2 className="mt-3 text-3xl md:text-4xl font-bold text-foreground">
-                Teknologi Mutakhir untuk Tambak Modern
+                {t("features.sectionTitle")}
               </h2>
               <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
-                Empat pilar teknologi yang bekerja sinergis untuk meningkatkan efisiensi dan produktivitas tambak.
+                {t("features.sectionDescription")}
               </p>
             </div>
           </FadeUp>
@@ -640,9 +631,9 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
           <FadeUp>
             <div className="text-center mb-16">
-              <span className="text-sm font-semibold text-primary uppercase tracking-wider">Cara Kerja</span>
+              <span className="text-sm font-semibold text-primary uppercase tracking-wider">{t("howItWorks.sectionLabel")}</span>
               <h2 className="mt-3 text-3xl md:text-4xl font-bold text-foreground">
-                Dari Kamera ke Dashboard dalam Hitungan Detik
+                {t("howItWorks.sectionTitle")}
               </h2>
             </div>
           </FadeUp>
@@ -655,22 +646,22 @@ export default function LandingPage() {
               {
                 step: "01",
                 icon: Eye,
-                title: "Capture & Analyze",
-                desc: "Kamera menangkap gambar udang, lalu AI mengidentifikasi ukuran dan berat secara otomatis.",
+                title: t("howItWorks.step1.title"),
+                desc: t("howItWorks.step1.description"),
                 color: "#22c55e",
               },
               {
                 step: "02",
                 icon: Cpu,
-                title: "Edge Processing",
-                desc: "Data diproses langsung di Jetson Nano, mengurangi latensi dan kebutuhan koneksi internet.",
+                title: t("howItWorks.step2.title"),
+                desc: t("howItWorks.step2.description"),
                 color: "#f59e0b",
               },
               {
                 step: "03",
                 icon: BarChart3,
-                title: "Visualize & Act",
-                desc: "Hasil analisis ditampilkan di dashboard real-time dan perangkat IoT merespons secara otomatis.",
+                title: t("howItWorks.step3.title"),
+                desc: t("howItWorks.step3.description"),
                 color: "#6366f1",
               },
             ].map((item, i) => (
@@ -722,18 +713,18 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
           <FadeUp>
             <div className="text-center mb-16">
-              <span className="text-sm font-semibold text-primary uppercase tracking-wider">Live Preview</span>
+              <span className="text-sm font-semibold text-primary uppercase tracking-wider">{t("monitoring.sectionLabel")}</span>
               <h2 className="mt-3 text-3xl md:text-4xl font-bold text-foreground">
-                Metrik yang Dipantau Secara Real-time
+                {t("monitoring.sectionTitle")}
               </h2>
             </div>
           </FadeUp>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { title: "Avg Body Length", value: "7.82 cm", icon: Ruler, color: "#22c55e", change: "+0.12 cm" },
-              { title: "Avg Body Weight", value: "14.5 g", icon: Weight, color: "#f59e0b", change: "+0.8 g" },
-              { title: "Activity Level", value: "78.3%", icon: Activity, color: "#6366f1", change: "+5.2%" },
+              { title: t("monitoring.avgBodyLength"), value: "7.82 cm", icon: Ruler, color: "#22c55e", change: "+0.12 cm" },
+              { title: t("monitoring.avgBodyWeight"), value: "14.5 g", icon: Weight, color: "#f59e0b", change: "+0.8 g" },
+              { title: t("monitoring.activityLevel"), value: "78.3%", icon: Activity, color: "#6366f1", change: "+5.2%" },
             ].map((metric, i) => (
               <FadeUp key={metric.title} delay={i * 0.1}>
                 <motion.div whileHover={{ y: -6, scale: 1.02 }} transition={{ type: "spring", stiffness: 300 }}>
@@ -796,12 +787,12 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <FadeUp>
             <div className="text-center mb-16">
-              <span className="text-sm font-semibold text-primary uppercase tracking-wider">Tech Stack</span>
+              <span className="text-sm font-semibold text-primary uppercase tracking-wider">{t("techStack.sectionLabel")}</span>
               <h2 className="mt-3 text-3xl md:text-4xl font-bold text-foreground">
-                Dibangun dengan Teknologi Terbaik
+                {t("techStack.sectionTitle")}
               </h2>
               <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
-                Kombinasi framework dan hardware canggih untuk performa optimal.
+                {t("techStack.sectionDescription")}
               </p>
             </div>
           </FadeUp>
@@ -832,20 +823,18 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <FadeUp>
-              <span className="text-sm font-semibold text-primary uppercase tracking-wider">WebGIS</span>
+              <span className="text-sm font-semibold text-primary uppercase tracking-wider">{t("webgis.sectionLabel")}</span>
               <h2 className="mt-3 text-3xl md:text-4xl font-bold text-foreground">
-                Pemetaan Tambak Berbasis Web
+                {t("webgis.sectionTitle")}
               </h2>
               <p className="mt-4 text-muted-foreground leading-relaxed">
-                Visualisasikan lokasi semua tambak Anda dalam satu peta interaktif.
-                Pantau status setiap kolam, perangkat terhubung, dan kondisi lingkungan
-                secara spasial.
+                {t("webgis.description")}
               </p>
               <div className="mt-6 space-y-3">
                 {[
-                  "Lokasi tambak real-time dengan koordinat GPS",
-                  "Overlay data kualitas air per kolam",
-                  "Analisis spasial area sekitar tambak",
+                  t("webgis.feature1"),
+                  t("webgis.feature2"),
+                  t("webgis.feature3"),
                 ].map((item, i) => (
                   <motion.div
                     key={item}
@@ -866,7 +855,7 @@ export default function LandingPage() {
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button variant="outline" className="rounded-full gap-2">
                     <Globe className="w-4 h-4" />
-                    Lihat WebGIS
+                    {t("webgis.viewWebgis")}
                   </Button>
                 </motion.div>
               </div>
@@ -900,7 +889,7 @@ export default function LandingPage() {
                       <motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }}>
                         <Globe className="w-16 h-16 text-primary/30 mx-auto mb-4" />
                       </motion.div>
-                      <p className="text-sm text-muted-foreground">Peta Interaktif Tambak</p>
+                      <p className="text-sm text-muted-foreground">{t("webgis.interactiveMap")}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -956,16 +945,16 @@ export default function LandingPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                   >
-                    Siap Mengoptimalkan Tambak Anda?
+                    {t("cta.title")}
                   </motion.h2>
                   <p className="text-white/80 text-lg max-w-lg mx-auto mb-8">
-                    Mulai monitoring cerdas sekarang dan tingkatkan produktivitas tambak udang Anda.
+                    {t("cta.description")}
                   </p>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Link href="/dashboard">
                       <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }}>
                         <Button size="lg" variant="secondary" className="rounded-full px-8 gap-2 text-base font-semibold shadow-lg">
-                          Mulai Sekarang
+                          {t("cta.startNow")}
                           <ArrowRight className="w-4 h-4" />
                         </Button>
                       </motion.div>
@@ -973,7 +962,7 @@ export default function LandingPage() {
                     <a href="mailto:info@shrimpie.id">
                       <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }}>
                         <Button size="lg" variant="ghost" className="rounded-full px-8 text-white hover:bg-white/10 hover:text-white text-base">
-                          Hubungi Kami
+                          {t("cta.contactUs")}
                         </Button>
                       </motion.div>
                     </a>
@@ -992,14 +981,12 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
           <FadeUp>
             <div className="text-center mb-12">
-              <span className="text-sm font-semibold text-primary uppercase tracking-wider">Tentang Kami</span>
+              <span className="text-sm font-semibold text-primary uppercase tracking-wider">{t("about.sectionLabel")}</span>
               <h2 className="mt-3 text-3xl md:text-4xl font-bold text-foreground">
-                Tim di Balik Shrimpie
+                {t("about.sectionTitle")}
               </h2>
               <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
-                Kami adalah tim mahasiswa dan peneliti yang bersemangat menggabungkan
-                kecerdasan buatan dengan akuakultur untuk membantu petambak Indonesia
-                meningkatkan hasil panen secara berkelanjutan.
+                {t("about.description")}
               </p>
             </div>
           </FadeUp>
@@ -1018,21 +1005,21 @@ export default function LandingPage() {
                 <span className="text-lg font-bold text-foreground">Shrimpie</span>
               </Link>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-                Solusi cerdas untuk manajemen tambak udang Vannamei menggunakan AI Computer Vision dan IoT.
+                {t("footer.tagline")}
               </p>
             </div>
 
             <div>
-              <h4 className="font-semibold text-foreground mb-4">Produk</h4>
+              <h4 className="font-semibold text-foreground mb-4">{t("footer.product")}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link></li>
-                <li><Link href="/riwayat" className="hover:text-foreground transition-colors">Riwayat</Link></li>
+                <li><Link href="/dashboard" className="hover:text-foreground transition-colors">{t("nav.features")}</Link></li>
+                <li><Link href="/riwayat" className="hover:text-foreground transition-colors">{t("sidebar.riwayat")}</Link></li>
                 <li><a href="#webgis" className="hover:text-foreground transition-colors">WebGIS</a></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-semibold text-foreground mb-4">Kontak</h4>
+              <h4 className="font-semibold text-foreground mb-4">{t("footer.contact")}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
                   <Mail className="w-4 h-4 shrink-0" />
@@ -1055,8 +1042,8 @@ export default function LandingPage() {
               &copy; {new Date().getFullYear()} Shrimpie. All rights reserved.
             </p>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
+              <a href="#" className="hover:text-foreground transition-colors">{t("footer.privacyPolicy")}</a>
+              <a href="#" className="hover:text-foreground transition-colors">{t("footer.termsOfService")}</a>
             </div>
           </div>
         </div>

@@ -1,0 +1,364 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "add": "Add",
+    "confirm": "Confirm",
+    "search": "Search...",
+    "noData": "No data.",
+    "processing": "Processing…",
+    "back": "Back"
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "technology": "Technology",
+      "webgis": "WebGIS",
+      "about": "About Us",
+      "login": "Sign In",
+      "register": "Sign Up"
+    },
+    "hero": {
+      "badge": "Smart Solution for Shrimp Farming",
+      "titleLine1": "Revolutionize Shrimp Farming with",
+      "typingWords": ["Artificial Intelligence", "Kecerdasan Buatan"],
+      "description": "Real-time monitoring of Vannamei shrimp growth using Computer Vision and precision IoT control.",
+      "ctaDashboard": "Open Dashboard",
+      "ctaLearnMore": "Learn Our Technology"
+    },
+    "stats": {
+      "detectionAccuracy": "Detection Accuracy",
+      "responseTime": "Response Time",
+      "connectedDevices": "Connected Devices",
+      "activePonds": "Active Ponds"
+    },
+    "features": {
+      "sectionLabel": "Key Features",
+      "sectionTitle": "Cutting-Edge Technology for Modern Farms",
+      "sectionDescription": "Four technology pillars working synergistically to increase farm efficiency and productivity.",
+      "aiGrowth": {
+        "title": "AI Growth Monitoring",
+        "description": "Automatic detection of shrimp length and weight using YOLOv11 model and high-precision regression."
+      },
+      "iotControl": {
+        "title": "IoT Smart Control",
+        "description": "Electric power monitoring (PZEM-004T) and automatic paddlewheel control using ESP32."
+      },
+      "edgeComputing": {
+        "title": "Edge Computing",
+        "description": "Seamless integration with Jetson Nano hardware for on-site video processing at the farm."
+      },
+      "analytics": {
+        "title": "Real-time Analytics",
+        "description": "Interactive data visualization to monitor farm ecosystem health in real-time."
+      }
+    },
+    "howItWorks": {
+      "sectionLabel": "How It Works",
+      "sectionTitle": "From Camera to Dashboard in Seconds",
+      "step1": {
+        "title": "Capture & Analyze",
+        "description": "Camera captures shrimp images, then AI automatically identifies size and weight."
+      },
+      "step2": {
+        "title": "Edge Processing",
+        "description": "Data is processed directly on the Jetson Nano, reducing latency and internet dependency."
+      },
+      "step3": {
+        "title": "Visualize & Act",
+        "description": "Analysis results displayed on a real-time dashboard and IoT devices respond automatically."
+      }
+    },
+    "monitoring": {
+      "sectionLabel": "Live Preview",
+      "sectionTitle": "Metrics Monitored in Real-time",
+      "avgBodyLength": "Avg Body Length",
+      "avgBodyWeight": "Avg Body Weight",
+      "activityLevel": "Activity Level"
+    },
+    "techStack": {
+      "sectionLabel": "Tech Stack",
+      "sectionTitle": "Built with the Best Technology",
+      "sectionDescription": "A combination of advanced frameworks and hardware for optimal performance."
+    },
+    "webgis": {
+      "sectionLabel": "WebGIS",
+      "sectionTitle": "Web-Based Farm Mapping",
+      "description": "Visualize all your farm locations in one interactive map. Monitor the status of each pond, connected devices, and environmental conditions spatially.",
+      "feature1": "Real-time farm locations with GPS coordinates",
+      "feature2": "Water quality data overlay per pond",
+      "feature3": "Spatial analysis of surrounding farm areas",
+      "viewWebgis": "View WebGIS",
+      "interactiveMap": "Interactive Farm Map"
+    },
+    "cta": {
+      "title": "Ready to Optimize Your Farm?",
+      "description": "Start smart monitoring now and increase your shrimp farm productivity.",
+      "startNow": "Start Now",
+      "contactUs": "Contact Us"
+    },
+    "about": {
+      "sectionLabel": "About Us",
+      "sectionTitle": "The Team Behind Shrimpie",
+      "description": "We are a team of students and researchers passionate about combining artificial intelligence with aquaculture to help Indonesian farmers increase yields sustainably."
+    },
+    "footer": {
+      "tagline": "Smart solution for Vannamei shrimp farm management using AI Computer Vision and IoT.",
+      "product": "Product",
+      "contact": "Contact",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service"
+    }
+  },
+  "login": {
+    "title": "Sign In to Shrimpie",
+    "description": "Enter your email and password to continue",
+    "emailLabel": "Email",
+    "emailPlaceholder": "name@email.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "••••••••",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "submit": "Sign In",
+    "googleSignIn": "Sign in with Google",
+    "noAccount": "Don't have an account?",
+    "register": "Sign Up",
+    "googleError": "An error occurred while signing in with Google.",
+    "validationEmail": "Enter a valid email address",
+    "validationPassword": "Password must be at least 8 characters"
+  },
+  "signup": {
+    "title": "Create Shrimpie Account",
+    "description": "Create a new account to start managing your farm",
+    "nameLabel": "Full Name",
+    "namePlaceholder": "John Doe",
+    "emailLabel": "Email",
+    "emailPlaceholder": "name@email.com",
+    "passwordLabel": "Password",
+    "passwordMinChars": "Minimum 8 characters.",
+    "confirmPasswordLabel": "Confirm Password",
+    "confirmPasswordHint": "Please confirm your password.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "submit": "Create Account",
+    "googleSignUp": "Sign up with Google",
+    "hasAccount": "Already have an account?",
+    "login": "Sign In",
+    "googleError": "An error occurred while signing up with Google.",
+    "successTitle": "Check Your Email",
+    "successDescription": "We've sent a verification link to your email. Please open your inbox and click the link to activate your account.",
+    "successAlert": "Registration successful!",
+    "successHint": "If you can't find the email, check your spam or promotions folder.",
+    "verifiedQuestion": "Already verified?",
+    "validationName": "Full name is required",
+    "validationEmail": "Enter a valid email address",
+    "validationPassword": "Password must be at least 8 characters",
+    "validationConfirmPassword": "Password confirmation is required",
+    "validationPasswordMatch": "Passwords do not match"
+  },
+  "navbar": {
+    "pageTitles": {
+      "dashboard": "Dashboard",
+      "riwayat": "Monitoring History",
+      "webgis": "WebGIS Tracker",
+      "chatAgent": "AI Recommendation",
+      "settings": "Settings"
+    },
+    "searchPlaceholder": "Search..."
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "riwayat": "History",
+    "webgis": "Webgis",
+    "aiRecommendation": "AI Recommendation",
+    "settings": "Settings",
+    "profile": "Profile",
+    "adminPanel": "Admin Panel",
+    "signOut": "Sign Out"
+  },
+  "globalSearch": {
+    "placeholder": "Type a command or search...",
+    "noResults": "No results found.",
+    "pages": "Pages",
+    "quickActions": "Quick Actions",
+    "dashboard": "Dashboard",
+    "webgisTracker": "WebGIS Tracker",
+    "chatAdvisor": "Chat Advisor",
+    "viewLatestMetrics": "View Latest Metrics",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "loadingVideo": "Loading video...",
+    "selectPond": "Select Pond",
+    "selectPondPlaceholder": "Select a Pond",
+    "noPondsFound": "No ponds found.",
+    "selectVideo": "Select Video",
+    "shrimpHealthy": "Shrimp appear healthy with normal activity levels.",
+    "analyzeWithAI": "Analyze with AI",
+    "handlingRecommendation": "Handling Recommendation",
+    "noMetrics": "No metric data available for this pond.",
+    "lastData": "Last data",
+    "docDays": "DOC {doc} days",
+    "avgBodyLength": "Avg Body Length (cm)",
+    "avgBodyWeight": "Avg Body Weight (g)",
+    "activityLevel": "Activity Level (px/s)",
+    "recommendations": {
+      "noStockingDate": "Stocking date data is not yet available for this pond. Please fill in the stocking date in the database.",
+      "outOfRange": "DOC is outside the scope of the feeding program.",
+      "phase": "📅 DOC {doc} — Phase {phase}",
+      "frequency": "🍤 Feeding frequency: {frequency}{rate}",
+      "rate": " | Feeding rate: {rate}",
+      "weightUnder": "⚠️ Weight ({weight}g) is below target ({min}–{max}g). Consider increasing feed quality and checking water quality.",
+      "weightOver": "✅ Weight ({weight}g) exceeds target ({min}–{max}g). Excellent growth.",
+      "weightNormal": "✅ Weight ({weight}g) matches target ({min}–{max}g).",
+      "lengthUnder": "⚠️ Length ({length}cm) is below target ({min}–{max}cm). Evaluate feed nutrition.",
+      "lengthOver": "✅ Length ({length}cm) exceeds target ({min}–{max}cm).",
+      "lengthNormal": "✅ Length ({length}cm) matches target ({min}–{max}cm).",
+      "activityVeryLow": "🚨 Activity ({activity} px/s) is very low. Immediately check water quality (DO, pH, salinity) and ensure optimal aeration. Reduce feed portion temporarily.",
+      "activityLow": "⚠️ Activity ({activity} px/s) is quite low. Monitor water quality and pay attention to signs of stress in shrimp.",
+      "activityHigh": "⚠️ Activity ({activity} px/s) is very high. Shrimp may be stressed or there is a sudden environmental change. Check temperature and water parameters.",
+      "activityNormal": "✅ Activity ({activity} px/s) is normal."
+    }
+  },
+  "riwayat": {
+    "selectPondPlaceholder": "Select Pond",
+    "noPondFound": "No ponds found.",
+    "from": "From",
+    "to": "To",
+    "avgBodyLength": "Avg Body Length (cm)",
+    "avgBodyWeight": "Avg Body Weight (g)",
+    "activityLevel": "Activity Level (px/s)",
+    "dailyDetail": "Daily Data Details",
+    "date": "Date",
+    "doc": "DOC",
+    "pond": "Pond",
+    "avgLength": "Avg Body Length",
+    "avgWeight": "Avg Body Weight",
+    "activity": "Activity Level",
+    "details": "Details",
+    "action": "Action",
+    "location": "Location",
+    "data": "data",
+    "confirmDelete": "Are you sure you want to delete this data?",
+    "confirmDeleteDay": "Are you sure you want to delete all {count} data entries for this day?",
+    "viewOnWebgis": "View on WebGIS"
+  },
+  "chatAgent": {
+    "newChat": "New Chat",
+    "noHistory": "No conversation history yet",
+    "untitledConversation": "Untitled conversation",
+    "deleteConversation": "Delete conversation",
+    "pond": "Pond:",
+    "selectPondPlaceholder": "Select Pond",
+    "noPonds": "No ponds available.",
+    "closeSidebar": "Close sidebar",
+    "openSidebar": "Open sidebar",
+    "justNow": "Just now",
+    "minutesAgo": "{count} minutes ago",
+    "hoursAgo": "{count} hours ago",
+    "daysAgo": "{count} days ago"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage shrimp monitoring application settings",
+    "pondSettings": {
+      "label": "Pond Settings",
+      "description": "Manage pond data, stocking dates, and pond names",
+      "addPond": "Add Pond",
+      "addPondTitle": "Add New Pond",
+      "addPondDescription": "Enter the information for the new pond.",
+      "pondName": "Pond Name",
+      "stockingDate": "Stocking Date",
+      "locationLabel": "Location (lng, lat)",
+      "noPonds": "No pond data. Click \"Add Pond\" to add one."
+    },
+    "deviceSettings": {
+      "label": "Device Settings",
+      "description": "View and manage monitoring device information",
+      "addDevice": "Add Device",
+      "addDeviceTitle": "Add New Device",
+      "addDeviceDescription": "Enter the information for the new device.",
+      "deviceName": "Device Name",
+      "pondLabel": "Pond",
+      "pondOptional": "Pond (optional)",
+      "selectPondPlaceholder": "Select Pond",
+      "noPondFound": "No ponds found.",
+      "status": "Status",
+      "lastUpdate": "Last Update",
+      "active": "Active",
+      "inactive": "Inactive",
+      "noDevices": "No device data. Click \"Add Device\" to add one."
+    },
+    "deleteConfirmTitle": "Confirm Delete",
+    "deleteConfirmDescription": "Are you sure you want to delete {type} \"{name}\"? This action cannot be undone.",
+    "deleteTypePond": "pond",
+    "deleteTypeDevice": "device"
+  },
+  "account": {
+    "title": "My Profile",
+    "description": "Manage your account profile information",
+    "accountInfo": "Account Information",
+    "email": "Email",
+    "username": "Username",
+    "birthDate": "Date of Birth",
+    "gender": "Gender",
+    "male": "Male",
+    "female": "Female",
+    "role": "Role",
+    "saveChanges": "Save Changes",
+    "signOutTitle": "Sign Out",
+    "signOutDescription": "You will be redirected to the login page.",
+    "signOut": "Sign Out"
+  },
+  "admin": {
+    "title": "Admin Panel",
+    "description": "Manage users and application access rights",
+    "totalUsers": "Total Users",
+    "administrator": "Administrator",
+    "guest": "Guest",
+    "searchPlaceholder": "Search users by username or ID...",
+    "noUsername": "No Username",
+    "you": "You",
+    "noUsersMatch": "No matching users found.",
+    "noUsersData": "No user data available.",
+    "birthDate": "Date of Birth",
+    "roleChangeTitle": "Confirm Role Change",
+    "roleChangeDescription": "Change user {username}'s role to {role}?",
+    "activeRole": "{role} (active)",
+    "setRole": "Set as {role}"
+  },
+  "chatInterface": {
+    "welcomePrefix": "Hello! I am your **Shrimpie Advisor**.",
+    "welcomePond": " I have analyzed the data from pond **{pondName}**.",
+    "welcomePondParams": "**Current Pond Parameters:**",
+    "avgWeight": "Average Weight: **{weight} grams**",
+    "avgLength": "Average Length: **{length} cm**",
+    "activityLevel": "Activity Level: **{activity}%**",
+    "docDays": "Days of Culture (DOC): **{doc} days**",
+    "welcomeSuffix": "Is there anything I can help you with regarding your shrimp management today?",
+    "avgWeightLabel": "Average Weight",
+    "avgLengthLabel": "Average Length",
+    "activityLevelLabel": "Activity Level",
+    "docLabel": "DOC (Days of Culture)",
+    "lastDataLabel": "Last Data",
+    "gram": "grams",
+    "cm": "cm",
+    "pxs": "px/s",
+    "days": "days",
+    "kolam": "Pond {pondName}",
+    "you": "You",
+    "advisor": "Shrimpie Advisor",
+    "errorProcessing": "Failed to process recommendation.",
+    "errorGeneral": "Sorry, an error occurred while processing your request.",
+    "errorServer": "Sorry, the system is currently experiencing issues. Please try again later.",
+    "retry": "Retry",
+    "analyzing": "Analyzing data...",
+    "inputPlaceholder": "Ask about shrimp management recommendations, feed quality, etc...",
+    "send": "Send message",
+    "warningNotice": "AI Advisor can make mistakes. Always verify important recommendations with an expert."
+  }
+}

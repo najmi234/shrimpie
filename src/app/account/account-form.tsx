@@ -19,6 +19,7 @@ import {
     LogOut,
     Users,
 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface Profile {
     username: string | null
@@ -30,6 +31,8 @@ interface Profile {
 
 export default function AccountForm({ user }: { user: User | null }) {
     const supabase = createClient()
+    const t = useTranslations('account')
+    const tCommon = useTranslations('common')
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
@@ -95,14 +98,16 @@ export default function AccountForm({ user }: { user: User | null }) {
         }
     }
 
+    const tAdmin = useTranslations('admin')
+
     const userInitial = (profile.username || fullName || user?.email || 'U').charAt(0).toUpperCase()
 
     const genderOptions = [
-        { value: 'male', label: 'Laki-laki' },
-        { value: 'female', label: 'Perempuan' },
+        { value: 'male', label: t('male') },
+        { value: 'female', label: t('female') },
     ]
 
-    const roleLabel = profile.user_role === 'admin' ? 'Administrator' : profile.user_role === 'guest' ? 'Guest' : profile.user_role || '-'
+    const roleLabel = profile.user_role === 'admin' ? tAdmin('administrator') : profile.user_role === 'guest' ? tAdmin('guest') : profile.user_role || '-'
     const roleColor = profile.user_role === 'admin' ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' : 'bg-blue-500/10 text-blue-600 border-blue-500/30'
 
     if (loading) {
@@ -117,8 +122,8 @@ export default function AccountForm({ user }: { user: User | null }) {
         <div className="container mx-auto max-w-2xl space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-foreground">Profil Saya</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">Kelola informasi profil akun Anda</p>
+                <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+                <p className="text-sm text-muted-foreground mt-0.5">{t("description")}</p>
             </div>
 
             {/* Profile Card */}
@@ -151,12 +156,12 @@ export default function AccountForm({ user }: { user: User | null }) {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                 <Card className="rounded-2xl py-0 border-border shadow-sm">
                     <CardContent className="p-6 space-y-5">
-                        <h3 className="text-base font-semibold text-foreground">Informasi Akun</h3>
+                        <h3 className="text-base font-semibold text-foreground">{t("accountInfo")}</h3>
 
                         {/* Email (read-only) */}
                         <div>
                             <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                                <Mail className="w-3.5 h-3.5" /> Email
+                                <Mail className="w-3.5 h-3.5" /> {t("email")}
                             </label>
                             <Input
                                 value={user?.email || ''}
@@ -168,7 +173,7 @@ export default function AccountForm({ user }: { user: User | null }) {
                         {/* Username */}
                         <div>
                             <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                                <AtSign className="w-3.5 h-3.5" /> Username
+                                <AtSign className="w-3.5 h-3.5" /> {t("username")}
                             </label>
                             <Input
                                 value={profile.username || ''}
@@ -181,7 +186,7 @@ export default function AccountForm({ user }: { user: User | null }) {
                         {/* Birth Date */}
                         <div>
                             <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5" /> Tanggal Lahir
+                                <Calendar className="w-3.5 h-3.5" /> {t("birthDate")}
                             </label>
                             <Input
                                 type="date"
@@ -194,7 +199,7 @@ export default function AccountForm({ user }: { user: User | null }) {
                         {/* Gender */}
                         <div>
                             <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                                <Users className="w-3.5 h-3.5" /> Jenis Kelamin
+                                <Users className="w-3.5 h-3.5" /> {t("gender")}
                             </label>
                             <div className="flex gap-3">
                                 {genderOptions.map((opt) => (
@@ -216,7 +221,7 @@ export default function AccountForm({ user }: { user: User | null }) {
                         {/* Role (read-only) */}
                         <div>
                             <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                                <Shield className="w-3.5 h-3.5" /> Role
+                                <Shield className="w-3.5 h-3.5" /> {t("role")}
                             </label>
                             <Input
                                 value={roleLabel}
@@ -240,7 +245,7 @@ export default function AccountForm({ user }: { user: User | null }) {
                                 ) : (
                                     <Save className="w-4 h-4" />
                                 )}
-                                {saving ? 'Menyimpan...' : saved ? 'Tersimpan!' : 'Simpan Perubahan'}
+                                {saving ? tCommon('saving') : saved ? tCommon('saved') : t('saveChanges')}
                             </Button>
                         </div>
                     </CardContent>
@@ -253,13 +258,13 @@ export default function AccountForm({ user }: { user: User | null }) {
                     <CardContent className="p-6">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
-                                <h3 className="text-sm font-semibold text-foreground">Keluar dari Akun</h3>
-                                <p className="text-xs text-muted-foreground mt-0.5">Anda akan diarahkan ke halaman login.</p>
+                                <h3 className="text-sm font-semibold text-foreground">{t("signOutTitle")}</h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">{t("signOutDescription")}</p>
                             </div>
                             <form action="/auth/signout" method="post">
                                 <Button type="submit" variant="destructive" size="sm" className="gap-2">
                                     <LogOut className="w-4 h-4" />
-                                    Keluar
+                                    {t("signOut")}
                                 </Button>
                             </form>
                         </div>

@@ -24,6 +24,7 @@ import {
     getMessages,
     type ChatMessageRow,
 } from "@/lib/chat/chat-persistence";
+import { useTranslations } from "next-intl";
 
 // Type definitions
 interface PondMetric {
@@ -70,19 +71,20 @@ function formatDate(dateStr: string) {
     return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
 }
 
-function buildWelcomeMessage(parameters: PondParameters): ChatMessage {
-    const docText = parameters.doc !== undefined && parameters.doc !== null ? `\n- Umur Udang (DOC): **${parameters.doc} hari**` : "";
+function buildWelcomeMessage(parameters: PondParameters, t: any): ChatMessage {
+    const docText = parameters.doc !== undefined && parameters.doc !== null ? `\n- ${t("docLabel")}: **${parameters.doc} ${t("days")}**` : "";
+    const pondText = parameters.pondName ? t("welcomePond", { pondName: parameters.pondName }) : "";
     return {
         id: "welcome",
         role: "assistant",
-        content: `Halo! Saya adalah **Shrimpie Advisor** Anda.${parameters.pondName ? ` Saya telah menganalisis data dari kolam **${parameters.pondName}**.` : ""}
+        content: `${t("welcomePrefix")}${pondText}
 
-**Parameter Kolam Saat Ini:**
-- Rata-rata Berat: **${parameters.avg_weight.toFixed(1)} gram**
-- Rata-rata Panjang: **${parameters.avg_length.toFixed(1)} cm**
-- Tingkat Keaktifan: **${parameters.activity_level.toFixed(1)}%**${docText}
+${t("welcomePondParams")}
+- ${t("avgWeightLabel")}: **${parameters.avg_weight.toFixed(1)} ${t("gram")}**
+- ${t("avgLengthLabel")}: **${parameters.avg_length.toFixed(1)} ${t("cm")}**
+- ${t("activityLevelLabel")}: **${parameters.activity_level.toFixed(1)}%**${docText}
 
-Ada yang bisa saya bantu terkait penanganan udang Anda hari ini?`,
+${t("welcomeSuffix")}`,
         createdAt: new Date(),
     };
 }
@@ -93,6 +95,7 @@ export default function ChatInterface({
     userId,
     onConversationCreated,
 }: ChatInterfaceProps) {
+    const t = useTranslations("chatInterface");
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -104,7 +107,7 @@ export default function ChatInterface({
     useEffect(() => {
         if (!conversationId) {
             // New conversation — show welcome message
-            setMessages([buildWelcomeMessage(parameters)]);
+            setMessages([buildWelcomeMessage(parameters, t)]);
             return;
         }
 
@@ -115,7 +118,7 @@ export default function ChatInterface({
             if (cancelled) return;
 
             if (rows.length === 0) {
-                setMessages([buildWelcomeMessage(parameters)]);
+                setMessages([buildWelcomeMessage(parameters, t)]);
                 return;
             }
 
@@ -132,12 +135,12 @@ export default function ChatInterface({
         return () => {
             cancelled = true;
         };
-    }, [conversationId]);
+    }, [conversationId, t]);
 
     // Reset to welcome when parameters change and no conversation loaded
     useEffect(() => {
         if (!conversationId) {
-            setMessages([buildWelcomeMessage(parameters)]);
+            setMessages([buildWelcomeMessage(parameters, t)]);
         }
     }, [
         parameters.avg_weight,
@@ -146,6 +149,8 @@ export default function ChatInterface({
         parameters.pondName,
         parameters.doc,
         parameters.stocking_date,
+        conversationId,
+        t,
     ]);
 
     // Auto-scroll to bottom of chat
@@ -258,7 +263,7 @@ export default function ChatInterface({
                         m.id === assistantId
                             ? {
                                 ...m,
-                                content: "Maaf, terjadi kesalahan saat memproses permintaan Anda.",
+                                content: t("errorGeneral"),
                                 isError: true,
                             }
                             : m
@@ -274,7 +279,7 @@ export default function ChatInterface({
                     m.id === assistantId
                         ? {
                             ...m,
-                            content: error.message || "Maaf, sistem sedang mengalami gangguan. Silakan coba beberapa saat lagi.",
+                            content: error.message || t("errorServer"),
                             isError: true,
                         }
                         : m
@@ -375,25 +380,25 @@ export default function ChatInterface({
 
     const metricCards = [
         {
-            label: "Rata-rata Berat",
+            label: t("avgWeightLabel"),
             value: parameters.avg_weight.toFixed(1),
-            unit: "gram",
+            unit: t("gram"),
             icon: Weight,
             color: "text-amber-500",
             bg: "bg-amber-500/10",
         },
         {
-            label: "Rata-rata Panjang",
+            label: t("avgLengthLabel"),
             value: parameters.avg_length.toFixed(1),
-            unit: "cm",
+            unit: t("cm"),
             icon: Ruler,
             color: "text-green-500",
             bg: "bg-green-500/10",
         },
         {
-            label: "Tingkat Keaktifan",
+            label: t("activityLevelLabel"),
             value: parameters.activity_level.toFixed(1),
-            unit: "px/s",
+            unit: t("pxs"),
             icon: Activity,
             color: "text-indigo-500",
             bg: "bg-indigo-500/10",
@@ -401,9 +406,9 @@ export default function ChatInterface({
         ...(parameters.doc !== undefined && parameters.doc !== null
             ? [
                   {
-                      label: "DOC (Umur Udang)",
+                      label: t("docLabel"),
                       value: String(parameters.doc),
-                      unit: "hari",
+                      unit: t("days"),
                       icon: Clock,
                       color: "text-cyan-500",
                       bg: "bg-cyan-500/10",
@@ -413,7 +418,7 @@ export default function ChatInterface({
         ...(lastDataDate
             ? [
                   {
-                      label: "Data Terakhir",
+                      label: t("lastDataLabel"),
                       value: lastDataDate,
                       unit: "",
                       icon: Clock,
@@ -435,7 +440,7 @@ export default function ChatInterface({
                             <div className="flex items-center gap-1.5 bg-background border border-border/50 rounded-full px-3 py-1 shadow-sm">
                                 <Circle className="w-2 h-2 fill-current text-teal-500" />
                                 <span className="text-xs font-medium text-foreground">
-                                    Kolam {parameters.pondName}
+                                    {t("kolam", { pondName: parameters.pondName })}
                                 </span>
                             </div>
                         )}
@@ -480,7 +485,7 @@ export default function ChatInterface({
 
                             <div className={`flex flex-col gap-1 min-w-0 ${message.role === "user" ? "items-end" : "items-start"}`}>
                                 <span className="text-xs text-muted-foreground px-1">
-                                    {message.role === "user" ? "Anda" : "Shrimpie Advisor"}
+                                    {message.role === "user" ? t("you") : t("advisor")}
                                 </span>
                                 <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm prose dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 ${message.role === "user"
                                     ? "bg-primary text-primary-foreground rounded-tr-sm"
@@ -508,7 +513,7 @@ export default function ChatInterface({
                                 {message.role === "assistant" && message.isError && (
                                     <div className="flex items-center gap-2 mt-2">
                                         <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
-                                        <span className="text-[11px] text-destructive font-medium">Gagal memproses rekomendasi.</span>
+                                        <span className="text-[11px] text-destructive font-medium">{t("errorProcessing")}</span>
                                         <Button
                                             onClick={() => handleRetryMessage(message.id)}
                                             size="sm"
@@ -516,7 +521,7 @@ export default function ChatInterface({
                                             className="h-7 px-2 text-xs gap-1 hover:bg-destructive/10 text-destructive hover:text-destructive shrink-0 rounded-md"
                                         >
                                             <RotateCcw className="w-3 h-3" />
-                                            Coba Lagi
+                                            {t("retry")}
                                         </Button>
                                     </div>
                                 )}
@@ -529,10 +534,10 @@ export default function ChatInterface({
                                 <Bot className="w-4 h-4" />
                             </div>
                             <div className="flex flex-col gap-1 min-w-0 items-start">
-                                <span className="text-xs text-muted-foreground px-1">Shrimpie Advisor</span>
+                                <span className="text-xs text-muted-foreground px-1">{t("advisor")}</span>
                                 <div className="px-5 py-4 border bg-muted/30 rounded-2xl rounded-tl-sm flex items-center gap-2">
                                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                                    <span className="text-sm text-muted-foreground">Menganalisis data...</span>
+                                    <span className="text-sm text-muted-foreground">{t("analyzing")}</span>
                                 </div>
                             </div>
                         </div>
@@ -547,7 +552,7 @@ export default function ChatInterface({
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Tanyakan tentang rekomendasi pengelolaan udang, kualitas pakan, dll..."
+                            placeholder={t("inputPlaceholder")}
                             className="min-h-[44px] max-h-[160px] resize-none border-0 bg-transparent py-3 px-4 shadow-none focus-visible:ring-0 w-full"
                             rows={1}
                         />
@@ -558,11 +563,11 @@ export default function ChatInterface({
                             className="h-10 w-10 shrink-0 rounded-xl mb-1 mr-1"
                         >
                             <Send className="w-4 h-4" />
-                            <span className="sr-only">Kirim pesan</span>
+                            <span className="sr-only">{t("send")}</span>
                         </Button>
                     </div>
                     <div className="text-center mt-2 text-[10px] text-muted-foreground">
-                        AI Advisor dapat melakukan kesalahan. Selalu verifikasi rekomendasi penting dengan ahli.
+                        {t("warningNotice")}
                     </div>
                 </div>
             </div>

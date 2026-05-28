@@ -17,6 +17,8 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox"
 
+import { useTranslations } from "next-intl"
+
 interface VideoEntry {
   pond_id: string
   pond_name: string
@@ -58,43 +60,44 @@ const feedingStages: FeedingStage[] = [
   { docMin: 120, docMax: 999, weightMin: 22.0, weightMax: 999, lengthMin: 11.5, lengthMax: 999, feedingRate: "≤1.8%", feedFrequency: "6x/hari", phase: "Kontrol Ancho" },
 ]
 
-function getHandlingRecommendation(doc: number | null, weight: number, length: number, activity: number): string {
-  if (doc === null) return "Data stocking_date belum tersedia untuk kolam ini. Silakan isi tanggal tebar di database."
+function getHandlingRecommendation(doc: number | null, weight: number, length: number, activity: number, t: any): string {
+  if (doc === null) return t("recommendations.noStockingDate")
 
   const stage = feedingStages.find((s) => doc >= s.docMin && doc <= s.docMax)
-  if (!stage) return "DOC di luar jangkauan program pakan."
+  if (!stage) return t("recommendations.outOfRange")
 
   const lines: string[] = []
-  lines.push(`📅 DOC ${doc} — Fase ${stage.phase}`)
-  lines.push(`🍤 Frekuensi pakan: ${stage.feedFrequency}${stage.feedingRate !== "-" ? ` | Feeding rate: ${stage.feedingRate}` : ""}`)
+  lines.push(t("recommendations.phase", { doc, phase: stage.phase }))
+  const rateText = stage.feedingRate !== "-" ? t("recommendations.rate", { rate: stage.feedingRate }) : ""
+  lines.push(t("recommendations.frequency", { frequency: stage.feedFrequency, rate: rateText }))
 
   // Check weight
   if (weight < stage.weightMin) {
-    lines.push(`⚠️ Berat (${weight}g) di bawah target (${stage.weightMin}–${stage.weightMax}g). Pertimbangkan tingkatkan kualitas pakan dan cek kualitas air.`)
+    lines.push(t("recommendations.weightUnder", { weight, min: stage.weightMin, max: stage.weightMax }))
   } else if (weight > stage.weightMax) {
-    lines.push(`✅ Berat (${weight}g) melebihi target (${stage.weightMin}–${stage.weightMax}g). Pertumbuhan sangat baik.`)
+    lines.push(t("recommendations.weightOver", { weight, min: stage.weightMin, max: stage.weightMax }))
   } else {
-    lines.push(`✅ Berat (${weight}g) sesuai target (${stage.weightMin}–${stage.weightMax}g).`)
+    lines.push(t("recommendations.weightNormal", { weight, min: stage.weightMin, max: stage.weightMax }))
   }
 
   // Check length
   if (length < stage.lengthMin) {
-    lines.push(`⚠️ Panjang (${length}cm) di bawah target (${stage.lengthMin}–${stage.lengthMax}cm). Evaluasi nutrisi pakan.`)
+    lines.push(t("recommendations.lengthUnder", { length, min: stage.lengthMin, max: stage.lengthMax }))
   } else if (length > stage.lengthMax) {
-    lines.push(`✅ Panjang (${length}cm) melebihi target (${stage.lengthMin}–${stage.lengthMax}cm).`)
+    lines.push(t("recommendations.lengthOver", { length, min: stage.lengthMin, max: stage.lengthMax }))
   } else {
-    lines.push(`✅ Panjang (${length}cm) sesuai target (${stage.lengthMin}–${stage.lengthMax}cm).`)
+    lines.push(t("recommendations.lengthNormal", { length, min: stage.lengthMin, max: stage.lengthMax }))
   }
 
   // Check activity level
   if (activity < 3) {
-    lines.push(`🚨 Aktivitas (${activity} px/s) sangat rendah. Segera cek kualitas air (DO, pH, salinitas) dan pastikan aerasi berjalan optimal. Kurangi porsi pakan sementara.`)
+    lines.push(t("recommendations.activityVeryLow", { activity }))
   } else if (activity < 5) {
-    lines.push(`⚠️ Aktivitas (${activity} px/s) cukup rendah. Pantau kualitas air dan perhatikan tanda-tanda stres pada udang.`)
+    lines.push(t("recommendations.activityLow", { activity }))
   } else if (activity > 15) {
-    lines.push(`⚠️ Aktivitas (${activity} px/s) sangat tinggi. Kemungkinan udang stres atau ada perubahan lingkungan mendadak. Periksa suhu dan parameter air.`)
+    lines.push(t("recommendations.activityHigh", { activity }))
   } else {
-    lines.push(`✅ Aktivitas (${activity} px/s) normal.`)
+    lines.push(t("recommendations.activityNormal", { activity }))
   }
 
   return lines.join("\n")
@@ -112,6 +115,7 @@ function formatRecordedAt(recorded_at: string) {
 
 export default function ShrimpMonitoringDashboard() {
   const supabase = createClient()
+  const t = useTranslations("dashboard")
   const [videos, setVideos] = useState<VideoEntry[]>([])
   const [selectedPondName, setSelectedPondName] = useState<string>("")
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string>("")
@@ -210,28 +214,28 @@ export default function ShrimpMonitoringDashboard() {
     const latestMetric = metrics.length > 0 ? metrics[metrics.length - 1] : null
     return [
       {
-        title: "Avg Body Length (cm)",
+        title: t("avgBodyLength"),
         value: latestMetric?.avg_body_length_cm ?? 0,
         data: metrics.map((m) => ({ time: formatRecordedAt(m.recorded_at), value: m.avg_body_length_cm })),
         color: "#22c55e",
         icon: Ruler,
       },
       {
-        title: "Avg Body Weight (g)",
+        title: t("avgBodyWeight"),
         value: latestMetric?.avg_body_weight_g ?? 0,
         data: metrics.map((m) => ({ time: formatRecordedAt(m.recorded_at), value: m.avg_body_weight_g })),
         color: "#f59e0b",
         icon: Weight,
       },
       {
-        title: "Activity Level (px/s)",
+        title: t("activityLevel"),
         value: latestMetric?.activity_level_pct ?? 0,
         data: metrics.map((m) => ({ time: formatRecordedAt(m.recorded_at), value: m.activity_level_pct })),
         color: "#6366f1",
         icon: Activity,
       },
     ]
-  }, [metrics, selectedPondId])
+  }, [metrics, selectedPondId, t])
 
   // Calculate DOC based on last metric's recorded_at (not current date)
   const latestMetricRecord = metrics.length > 0 ? metrics[metrics.length - 1] : null
@@ -247,8 +251,8 @@ export default function ShrimpMonitoringDashboard() {
   const recommendation = useMemo(() => {
     if (metrics.length === 0) return null
     const latest = metrics[metrics.length - 1]
-    return getHandlingRecommendation(doc, latest.avg_body_weight_g, latest.avg_body_length_cm, latest.activity_level_pct)
-  }, [metrics, doc])
+    return getHandlingRecommendation(doc, latest.avg_body_weight_g, latest.avg_body_length_cm, latest.activity_level_pct, t)
+  }, [metrics, doc, t])
 
 
   return (
@@ -273,7 +277,7 @@ export default function ShrimpMonitoringDashboard() {
                     className="w-full h-full rounded-xl"
                   />
                 ) : (
-                  <p className="text-muted-foreground">Loading video...</p>
+                  <p className="text-muted-foreground">{t("loadingVideo")}</p>
                 )}
               </div>
             </CardContent>
@@ -290,7 +294,7 @@ export default function ShrimpMonitoringDashboard() {
             <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow h-full flex flex-col min-h-0">
               <CardContent className="p-6 flex flex-col gap-3 h-full min-h-0">
                 <div className="shrink-0">
-                  <h2 className="text-xl font-semibold mb-3 text-foreground">Select Pond</h2>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">{t("selectPond")}</h2>
                   <Combobox
                     items={ponds}
                     value={selectedPondName}
@@ -301,9 +305,9 @@ export default function ShrimpMonitoringDashboard() {
                       if (firstVideo) setSelectedVideoUrl(firstVideo.file_url)
                     }}
                   >
-                    <ComboboxInput className="w-full bg-background border-border" placeholder="Select a Pond" />
+                    <ComboboxInput className="w-full bg-background border-border" placeholder={t("selectPondPlaceholder")} />
                     <ComboboxContent>
-                      <ComboboxEmpty>No ponds found.</ComboboxEmpty>
+                      <ComboboxEmpty>{t("noPondsFound")}</ComboboxEmpty>
                       <ComboboxList>
                         {(item) => (
                           <ComboboxItem key={item} value={item}>
@@ -316,7 +320,7 @@ export default function ShrimpMonitoringDashboard() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 max-h-48 lg:max-h-none pr-2 custom-scrollbar">
-                  <h2 className="text-xl font-semibold mb-3 text-foreground sticky top-0 bg-card py-1 z-10">Select Video</h2>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground sticky top-0 bg-card py-1 z-10">{t("selectVideo")}</h2>
                   <div className="grid grid-cols-2 gap-3 pb-2">
                     {filteredVideos.map((video) => (
                       <Button
@@ -333,12 +337,12 @@ export default function ShrimpMonitoringDashboard() {
 
                 <div className="pt-3 border-t border-border/50 shrink-0">
                   <p className="text-xs text-muted-foreground mb-1">
-                    Kondisi udang terlihat sehat dengan tingkat keaktifan normal.
+                    {t("shrimpHealthy")}
                   </p>
                   <Button asChild className="w-full rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white gap-2">
                     <Link className="text-xs" href="/chat-agent">
                       <Sparkles />
-                      Analyze with AI
+                      {t("analyzeWithAI")}
                     </Link>
                   </Button>
                 </div>
@@ -360,15 +364,15 @@ export default function ShrimpMonitoringDashboard() {
             <CardContent className="p-5 flex flex-col h-[208px]">
               <div className="flex items-center gap-2 mb-3">
                 <Lightbulb className="w-5 h-5 text-amber-500" />
-                <h3 className="text-sm font-semibold text-foreground">Handling Recommendation</h3>
+                <h3 className="text-sm font-semibold text-foreground">{t("handlingRecommendation")}</h3>
               </div>
               <div className="flex-1 overflow-auto bg-blue-50/50 dark:bg-blue-950/20 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30 custom-scrollbar">
                 {recommendation ? (
                   <>
                     {latestMetricRecord && (
                       <p className="text-[11px] text-muted-foreground mb-2 pb-2">
-                        📊 Data terakhir: {formatRecordedAt(latestMetricRecord.recorded_at)}
-                        {doc !== null ? ` · DOC ${doc} hari` : ""}
+                        📊 {t("lastData")}: {formatRecordedAt(latestMetricRecord.recorded_at)}
+                        {doc !== null ? ` · ${t("docDays", { doc })}` : ""}
                       </p>
                     )}
                     <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
@@ -377,7 +381,7 @@ export default function ShrimpMonitoringDashboard() {
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground italic flex h-full items-center justify-center">
-                    Belum ada data metrik untuk kolam ini.
+                    {t("noMetrics")}
                   </p>
                 )}
               </div>

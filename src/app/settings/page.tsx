@@ -35,6 +35,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
+import { useTranslations } from "next-intl"
 
 // ---------- types ----------
 
@@ -63,25 +64,27 @@ interface SettingsCategory {
     icon: React.ElementType
 }
 
-const categories: SettingsCategory[] = [
-    {
-        id: "pond",
-        label: "Pond Settings",
-        description: "Kelola data kolam, stocking date, dan nama kolam",
-        icon: Shell,
-    },
-    {
-        id: "device",
-        label: "Device Settings",
-        description: "Lihat dan kelola informasi perangkat monitoring",
-        icon: Cpu,
-    },
-]
-
 // ---------- component ----------
 
 export default function SettingsPage() {
     const supabase = createClient()
+    const t = useTranslations("settings")
+    const tCommon = useTranslations("common")
+    const categories: SettingsCategory[] = [
+        {
+            id: "pond",
+            label: t("pondSettings.label"),
+            description: t("pondSettings.description"),
+            icon: Shell,
+        },
+        {
+            id: "device",
+            label: t("deviceSettings.label"),
+            description: t("deviceSettings.description"),
+            icon: Cpu,
+        },
+    ]
+
     const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
     // ----- Pond state -----
@@ -436,33 +439,33 @@ export default function SettingsPage() {
                     <DialogTrigger asChild>
                         <Button size="sm" className="gap-2 rounded-xl">
                             <Plus className="w-4 h-4" />
-                            Tambah Kolam
+                            {t("pondSettings.addPond")}
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="rounded-2xl">
                         <DialogHeader>
-                            <DialogTitle>Tambah Kolam Baru</DialogTitle>
-                            <DialogDescription>Isi informasi kolam baru yang ingin ditambahkan.</DialogDescription>
+                            <DialogTitle>{t("pondSettings.addPondTitle")}</DialogTitle>
+                            <DialogDescription>{t("pondSettings.addPondDescription")}</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-3 py-2">
                             <div>
-                                <label className="text-xs text-muted-foreground mb-1 block">Nama Kolam *</label>
+                                <label className="text-xs text-muted-foreground mb-1 block">{t("pondSettings.pondName")} *</label>
                                 <Input value={newPondName} onChange={(e) => setNewPondName(e.target.value)} placeholder="Kolam 1" className="h-9 text-sm" />
                             </div>
                             <div>
-                                <label className="text-xs text-muted-foreground mb-1 block">Stocking Date</label>
+                                <label className="text-xs text-muted-foreground mb-1 block">{t("pondSettings.stockingDate")}</label>
                                 <Input type="date" value={newPondStockingDate} onChange={(e) => setNewPondStockingDate(e.target.value)} className="h-9 text-sm" />
                             </div>
                             <div>
-                                <label className="text-xs text-muted-foreground mb-1 block">Lokasi (lng, lat)</label>
+                                <label className="text-xs text-muted-foreground mb-1 block">{t("pondSettings.locationLabel")}</label>
                                 <Input value={newPondLocation} onChange={(e) => setNewPondLocation(e.target.value)} placeholder="112.820783, -7.270499" className="h-9 text-sm" />
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setAddPondOpen(false)}>Batal</Button>
+                            <Button variant="outline" onClick={() => setAddPondOpen(false)}>{tCommon("cancel")}</Button>
                             <Button onClick={handleAddPond} disabled={!newPondName.trim() || addPondLoading} className="gap-2">
                                 {addPondLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                Tambah
+                                {tCommon("add")}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -472,7 +475,7 @@ export default function SettingsPage() {
             {ponds.length === 0 ? (
                 <Card className="rounded-2xl py-0 border-border">
                     <CardContent className="p-8 text-center text-muted-foreground">
-                        Tidak ada data kolam. Klik &quot;Tambah Kolam&quot; untuk menambah.
+                        {t("pondSettings.noPonds")}
                     </CardContent>
                 </Card>
             ) : (
@@ -497,12 +500,12 @@ export default function SettingsPage() {
                                                 <Shell className="w-5 h-5 text-teal-500" />
                                             </div>
                                             <div className="sm:hidden">
-                                                <p className="text-xs text-muted-foreground">Nama Kolam</p>
+                                                <p className="text-xs text-muted-foreground">{t("pondSettings.pondName")}</p>
                                             </div>
                                         </div>
                                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div>
-                                                <label className="text-xs text-muted-foreground mb-1 block">Nama Kolam</label>
+                                                <label className="text-xs text-muted-foreground mb-1 block">{t("pondSettings.pondName")}</label>
                                                 <Input
                                                     value={edited?.name ?? pond.name}
                                                     onChange={(e) => handlePondFieldChange(pond.id, "name", e.target.value)}
@@ -510,7 +513,7 @@ export default function SettingsPage() {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-xs text-muted-foreground mb-1 block">Stocking Date</label>
+                                                <label className="text-xs text-muted-foreground mb-1 block">{t("pondSettings.stockingDate")}</label>
                                                 <Input
                                                     type="date"
                                                     value={edited?.stocking_date ?? pond.stocking_date ?? ""}
@@ -519,7 +522,7 @@ export default function SettingsPage() {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-xs text-muted-foreground mb-1 block">Lokasi (lng, lat)</label>
+                                                <label className="text-xs text-muted-foreground mb-1 block">{t("pondSettings.locationLabel")}</label>
                                                 <Input
                                                     value={edited?.location ?? pond.location ?? ""}
                                                     onChange={(e) => handlePondFieldChange(pond.id, "location", e.target.value)}
@@ -542,7 +545,7 @@ export default function SettingsPage() {
                                                     ) : (
                                                         <Save className="w-4 h-4" />
                                                     )}
-                                                    {saving ? "Menyimpan..." : saved ? "Tersimpan" : "Simpan"}
+                                                    {saving ? tCommon("saving") : saved ? tCommon("saved") : tCommon("save")}
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -578,21 +581,21 @@ export default function SettingsPage() {
                     <DialogTrigger asChild>
                         <Button size="sm" className="gap-2 rounded-xl">
                             <Plus className="w-4 h-4" />
-                            Tambah Device
+                            {t("deviceSettings.addDevice")}
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="rounded-2xl">
                         <DialogHeader>
-                            <DialogTitle>Tambah Device Baru</DialogTitle>
-                            <DialogDescription>Isi informasi perangkat baru yang ingin ditambahkan.</DialogDescription>
+                            <DialogTitle>{t("deviceSettings.addDeviceTitle")}</DialogTitle>
+                            <DialogDescription>{t("deviceSettings.addDeviceDescription")}</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-3 py-2">
                             <div>
-                                <label className="text-xs text-muted-foreground mb-1 block">Nama Device *</label>
+                                <label className="text-xs text-muted-foreground mb-1 block">{t("deviceSettings.deviceName")} *</label>
                                 <Input value={newDeviceName} onChange={(e) => setNewDeviceName(e.target.value)} placeholder="Device 1" className="h-9 text-sm" />
                             </div>
                             <div>
-                                <label className="text-xs text-muted-foreground mb-1 block">Kolam (opsional)</label>
+                                <label className="text-xs text-muted-foreground mb-1 block">{t("deviceSettings.pondOptional")}</label>
                                 <Combobox
                                     items={ponds.map(p => p.name)}
                                     value={ponds.find(p => p.id === newDevicePondId)?.name ?? ""}
@@ -603,9 +606,9 @@ export default function SettingsPage() {
                                         }
                                     }}
                                 >
-                                    <ComboboxInput className="w-full bg-background border-border h-9 text-sm" placeholder="Pilih Kolam" />
+                                    <ComboboxInput className="w-full bg-background border-border h-9 text-sm" placeholder={t("deviceSettings.selectPondPlaceholder")} />
                                     <ComboboxContent>
-                                        <ComboboxEmpty>Kolam tidak ditemukan.</ComboboxEmpty>
+                                        <ComboboxEmpty>{t("deviceSettings.noPondFound")}</ComboboxEmpty>
                                         <ComboboxList>
                                             {(item) => (
                                                 <ComboboxItem key={item} value={item}>{item}</ComboboxItem>
@@ -616,10 +619,10 @@ export default function SettingsPage() {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setAddDeviceOpen(false)}>Batal</Button>
+                            <Button variant="outline" onClick={() => setAddDeviceOpen(false)}>{tCommon("cancel")}</Button>
                             <Button onClick={handleAddDevice} disabled={!newDeviceName.trim() || addDeviceLoading} className="gap-2">
                                 {addDeviceLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                Tambah
+                                {tCommon("add")}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -629,7 +632,7 @@ export default function SettingsPage() {
             {devices.length === 0 ? (
                 <Card className="rounded-2xl py-0 border-border">
                     <CardContent className="p-8 text-center text-muted-foreground">
-                        Tidak ada data perangkat. Klik &quot;Tambah Device&quot; untuk menambah.
+                        {t("deviceSettings.noDevices")}
                     </CardContent>
                 </Card>
             ) : (
@@ -643,8 +646,8 @@ export default function SettingsPage() {
                         ? "bg-green-500"
                         : "bg-red-500"
                     const statusLabel = device.status?.toLowerCase() === "active"
-                        ? "Active"
-                        : "Inactive"
+                        ? t("deviceSettings.active")
+                        : t("deviceSettings.inactive")
 
                     const lastUpdate = device.last_update_at
                         ? new Date(device.last_update_at).toLocaleString("id-ID", {
@@ -673,7 +676,7 @@ export default function SettingsPage() {
                                         </div>
                                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-5 gap-3">
                                             <div>
-                                                <label className="text-xs text-muted-foreground mb-1 block">Nama Device</label>
+                                                <label className="text-xs text-muted-foreground mb-1 block">{t("deviceSettings.deviceName")}</label>
                                                 <Input
                                                     value={edited?.name ?? device.name}
                                                     onChange={(e) => handleDeviceFieldChange(device.id, "name", e.target.value)}
@@ -681,7 +684,7 @@ export default function SettingsPage() {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-xs text-muted-foreground mb-1 block">Kolam</label>
+                                                <label className="text-xs text-muted-foreground mb-1 block">{t("deviceSettings.pondLabel")}</label>
                                                 <Combobox
                                                     items={ponds.map(p => p.name)}
                                                     value={(() => {
@@ -697,28 +700,28 @@ export default function SettingsPage() {
                                                         }
                                                     }}
                                                 >
-                                                    <ComboboxInput className="w-full bg-background border-border h-9 text-sm" placeholder="Pilih Kolam" />
+                                                    <ComboboxInput className="w-full bg-background border-border h-9 text-sm" placeholder={t("deviceSettings.selectPondPlaceholder")} />
                                                     <ComboboxContent>
-                                                        <ComboboxEmpty>Kolam tidak ditemukan.</ComboboxEmpty>
+                                                        <ComboboxEmpty>{t("deviceSettings.noPondFound")}</ComboboxEmpty>
                                                         <ComboboxList>
                                                             {(item) => (
                                                                 <ComboboxItem key={item} value={item}>
                                                                     {item}
-                                                                </ComboboxItem>
+                                                                 </ComboboxItem>
                                                             )}
                                                         </ComboboxList>
                                                     </ComboboxContent>
                                                 </Combobox>
                                             </div>
                                             <div>
-                                                <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+                                                <label className="text-xs text-muted-foreground mb-1 block">{t("deviceSettings.status")}</label>
                                                 <div className="h-9 flex items-center gap-2 px-3 rounded-md bg-muted/50 border border-border">
                                                     <span className={`w-2.5 h-2.5 rounded-full ${statusColor}`} />
                                                     <span className="text-sm text-foreground">{statusLabel}</span>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="text-xs text-muted-foreground mb-1 block">Last Update</label>
+                                                <label className="text-xs text-muted-foreground mb-1 block">{t("deviceSettings.lastUpdate")}</label>
                                                 <div className="h-9 flex items-center px-3 rounded-md bg-muted/50 border border-border">
                                                     <span className="text-sm text-muted-foreground">{lastUpdate}</span>
                                                 </div>
@@ -738,7 +741,7 @@ export default function SettingsPage() {
                                                     ) : (
                                                         <Save className="w-4 h-4" />
                                                     )}
-                                                    {saving ? "Menyimpan..." : saved ? "Tersimpan" : "Simpan"}
+                                                    {saving ? tCommon("saving") : saved ? tCommon("saved") : tCommon("save")}
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -783,10 +786,10 @@ export default function SettingsPage() {
                 )}
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">
-                        {activeCat ? activeCat.label : "Settings"}
+                        {activeCat ? activeCat.label : t("title")}
                     </h1>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                        {activeCat ? activeCat.description : "Kelola pengaturan aplikasi monitoring udang"}
+                        {activeCat ? activeCat.description : t("description")}
                     </p>
                 </div>
             </div>
@@ -802,18 +805,19 @@ export default function SettingsPage() {
             <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
                 <DialogContent className="rounded-2xl">
                     <DialogHeader>
-                        <DialogTitle>Konfirmasi Hapus</DialogTitle>
+                        <DialogTitle>{t("deleteConfirmTitle")}</DialogTitle>
                         <DialogDescription>
-                            Apakah Anda yakin ingin menghapus {deleteTarget?.type === "pond" ? "kolam" : "perangkat"}{" "}
-                            <span className="font-semibold text-foreground">{deleteTarget?.name}</span>?
-                            Tindakan ini tidak dapat dibatalkan.
+                            {t("deleteConfirmDescription", {
+                                type: deleteTarget?.type === "pond" ? t("deleteTypePond") : t("deleteTypeDevice"),
+                                name: deleteTarget?.name || ""
+                            })}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleteLoading}>Batal</Button>
+                        <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleteLoading}>{tCommon("cancel")}</Button>
                         <Button variant="destructive" onClick={handleDelete} disabled={deleteLoading} className="gap-2">
                             {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                            Hapus
+                            {tCommon("delete")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

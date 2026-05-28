@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { format, subDays, differenceInDays, parseISO } from "date-fns"
 import { createClient } from "@/lib/supabase/client"
+import { useTranslations } from "next-intl"
 
 // ---------- types ----------
 
@@ -58,36 +59,35 @@ interface DailySummary {
     details: MetricRow[]
 }
 
-// ---------- chart config ----------
-
-const chartConfigs = [
-    {
-        title: "Avg Body Length (cm)",
-        dataKey: "length" as const,
-        color: "#22c55e",
-        icon: Ruler,
-    },
-    {
-        title: "Avg Body Weight (g)",
-        dataKey: "weight" as const,
-        color: "#f59e0b",
-        icon: Weight,
-    },
-    {
-        title: "Activity Level (px/s)",
-        dataKey: "activity" as const,
-        color: "#6366f1",
-        icon: Activity,
-    },
-]
-
 // ---------- component ----------
 
 function RiwayatPageContent() {
     const supabase = createClient()
+    const t = useTranslations("riwayat")
     const searchParams = useSearchParams()
     const router = useRouter()
     const pondParam = searchParams.get("pond")
+
+    const chartConfigs = useMemo(() => [
+        {
+            title: t("avgBodyLength"),
+            dataKey: "length" as const,
+            color: "#22c55e",
+            icon: Ruler,
+        },
+        {
+            title: t("avgBodyWeight"),
+            dataKey: "weight" as const,
+            color: "#f59e0b",
+            icon: Weight,
+        },
+        {
+            title: t("activityLevel"),
+            dataKey: "activity" as const,
+            color: "#6366f1",
+            icon: Activity,
+        },
+    ], [t])
 
     const [ponds, setPonds] = useState<PondOption[]>([])
     const [selectedPondName, setSelectedPondName] = useState<string>("")
@@ -176,7 +176,7 @@ function RiwayatPageContent() {
 
     // Delete a single metric record
     const handleDeleteMetric = async (metricId: string) => {
-        if (!confirm("Yakin ingin menghapus data ini?")) return
+        if (!confirm(t("confirmDelete"))) return
         const { error } = await supabase
             .from("pond_metrics")
             .delete()
@@ -191,7 +191,7 @@ function RiwayatPageContent() {
 
     // Delete all metrics for a specific day
     const handleDeleteDay = async (details: MetricRow[]) => {
-        if (!confirm(`Yakin ingin menghapus semua ${details.length} data di hari ini?`)) return
+        if (!confirm(t("confirmDeleteDay", { count: details.length }))) return
         const ids = details.map((d) => d.id)
         const { error } = await supabase
             .from("pond_metrics")
@@ -270,9 +270,9 @@ function RiwayatPageContent() {
                                 if (val !== null) setSelectedPondName(val)
                             }}
                         >
-                            <ComboboxInput className="w-full bg-background border-border" placeholder="Pilih Kolam" />
+                            <ComboboxInput className="w-full bg-background border-border" placeholder={t("selectPondPlaceholder")} />
                             <ComboboxContent>
-                                <ComboboxEmpty>Kolam tidak ditemukan.</ComboboxEmpty>
+                                <ComboboxEmpty>{t("noPondFound")}</ComboboxEmpty>
                                 <ComboboxList>
                                     {(item) => (
                                         <ComboboxItem key={item} value={item}>
@@ -287,7 +287,7 @@ function RiwayatPageContent() {
                     {/* Date range inputs */}
                     <div className="grid grid-cols-2 gap-3 w-full sm:flex sm:items-center sm:gap-3 sm:w-auto">
                         <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-1.5 flex-1 sm:flex-none">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
+                            <label className="text-xs text-muted-foreground whitespace-nowrap">{t("from")}</label>
                             <Input
                                 type="date"
                                 value={fromDate}
@@ -296,7 +296,7 @@ function RiwayatPageContent() {
                             />
                         </div>
                         <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-1.5 flex-1 sm:flex-none">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
+                            <label className="text-xs text-muted-foreground whitespace-nowrap">{t("to")}</label>
                             <Input
                                 type="date"
                                 value={toDate}
@@ -407,38 +407,38 @@ function RiwayatPageContent() {
                 <Card className="rounded-2xl py-0 border-border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                     <CardContent className="p-5">
                         <h3 className="text-lg font-semibold text-foreground mb-4">
-                            Detail Data Harian
+                            {t("dailyDetail")}
                         </h3>
                         <div className="overflow-x-auto -mx-5 px-5">
                             <table className="w-full text-sm min-w-[700px]">
                                 <thead>
                                     <tr className="border-b border-border text-left">
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap">
-                                            Tanggal
+                                            {t("date")}
                                         </th>
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap">
-                                            DOC
+                                            {t("doc")}
                                         </th>
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap">
-                                            Kolam
+                                            {t("pond")}
                                         </th>
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap">
-                                            Avg Body Length
+                                            {t("avgLength")}
                                         </th>
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap">
-                                            Avg Body Weight
+                                            {t("avgWeight")}
                                         </th>
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap">
-                                            Activity Level
+                                            {t("activity")}
                                         </th>
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground text-center whitespace-nowrap">
-                                            Rincian
+                                            {t("details")}
                                         </th>
                                         <th className="pb-3 pr-4 font-medium text-muted-foreground text-center whitespace-nowrap">
-                                            Aksi
+                                            {t("action")}
                                         </th>
                                         <th className="pb-3 font-medium text-muted-foreground text-center whitespace-nowrap">
-                                            Lokasi
+                                            {t("location")}
                                         </th>
                                     </tr>
                                 </thead>
@@ -473,7 +473,7 @@ function RiwayatPageContent() {
                                                             className="h-7 px-2 text-xs gap-1"
                                                             onClick={() => setExpandedDate(isExpanded ? null : summary.fullDate)}
                                                         >
-                                                            {summary.count} data
+                                                            {summary.count} {t("data")}
                                                             {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                                         </Button>
                                                     </td>
@@ -498,7 +498,7 @@ function RiwayatPageContent() {
                                                                     }
                                                                 }}
                                                                 className="inline-flex items-center justify-center w-7 h-7 rounded-md text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
-                                                                title="Lihat di WebGIS"
+                                                                title={t("viewOnWebgis")}
                                                             >
                                                                 <MapPin className="w-4 h-4" />
                                                             </button>
@@ -552,7 +552,7 @@ function RiwayatPageContent() {
                                                                         }
                                                                     }}
                                                                     className="inline-flex items-center justify-center w-6 h-6 rounded-md text-emerald-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
-                                                                    title="Lihat di WebGIS"
+                                                                    title={t("viewOnWebgis")}
                                                                 >
                                                                     <MapPin className="w-3 h-3" />
                                                                 </button>

@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Eye, EyeOff, Loader2, LogIn, AlertCircle } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { cn } from '@/lib/utils'
 import { login } from '@/app/login/actions'
@@ -30,14 +31,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 
 import { createClient } from '@/lib/supabase/client'
 
-// ── Schema ─────────────────────────────────────────────────────────────
-const loginSchema = z.object({
-  email: z.email('Masukkan alamat email yang valid'),
-  password: z.string().min(8, 'Password minimal 8 karakter'),
-})
-
-type LoginValues = z.infer<typeof loginSchema>
-
 // ── Component ──────────────────────────────────────────────────────────
 export function LoginForm({
   className,
@@ -47,6 +40,15 @@ export function LoginForm({
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const t = useTranslations('login')
+
+  // ── Schema ─────────────────────────────────────────────────────────────
+  const loginSchema = z.object({
+    email: z.email(t('validationEmail')),
+    password: z.string().min(8, t('validationPassword')),
+  })
+
+  type LoginValues = z.infer<typeof loginSchema>
 
   const {
     register,
@@ -82,7 +84,7 @@ export function LoginForm({
         setServerError(error.message)
       }
     } catch (err: any) {
-      setServerError('Terjadi kesalahan saat masuk dengan Google.')
+      setServerError(t('googleError'))
     } finally {
       setGoogleLoading(false)
     }
@@ -92,9 +94,9 @@ export function LoginForm({
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle>Masuk ke Shrimpie</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
           <CardDescription>
-            Masukkan email dan password untuk melanjutkan
+            {t('description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -110,11 +112,11 @@ export function LoginForm({
 
               {/* ── Email ────────────────────────────────────────── */}
               <Field data-invalid={!!errors.email || undefined}>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <FieldLabel htmlFor="email">{t('emailLabel')}</FieldLabel>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="nama@email.com"
+                  placeholder={t('emailPlaceholder')}
                   autoComplete="email"
                   disabled={isSubmitting}
                   aria-invalid={!!errors.email}
@@ -125,12 +127,12 @@ export function LoginForm({
 
               {/* ── Password ─────────────────────────────────────── */}
               <Field data-invalid={!!errors.password || undefined}>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <FieldLabel htmlFor="password">{t('passwordLabel')}</FieldLabel>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
+                    placeholder={t('passwordPlaceholder')}
                     autoComplete="current-password"
                     disabled={isSubmitting}
                     aria-invalid={!!errors.password}
@@ -141,7 +143,7 @@ export function LoginForm({
                     type="button"
                     tabIndex={-1}
                     aria-label={
-                      showPassword ? 'Sembunyikan password' : 'Tampilkan password'
+                      showPassword ? t('hidePassword') : t('showPassword')
                     }
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     onClick={() => setShowPassword((v) => !v)}
@@ -166,11 +168,11 @@ export function LoginForm({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="size-4 animate-spin" />
-                      Memproses…
+                      {t('submit')}…
                     </>
                   ) : (
                     <>
-                      Masuk
+                      {t('submit')}
                     </>
                   )}
                 </Button>
@@ -188,11 +190,11 @@ export function LoginForm({
                       <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
                     </svg>
                   )}
-                  Masuk dengan Google
+                  {t('googleSignIn')}
                 </Button>
                 <FieldDescription className="text-center">
-                  Belum punya akun?{' '}
-                  <Link href="/register">Daftar</Link>
+                  {t('noAccount')}{' '}
+                  <Link href="/register">{t('register')}</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

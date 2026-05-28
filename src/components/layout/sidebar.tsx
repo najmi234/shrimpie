@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { LayoutDashboard, Settings, Globe, History, MessageSquareText, ChevronLeft, ChevronRight, LogOut, ChevronsUpDown, UserPen, MonitorCog } from "lucide-react"
 import { useSidebar } from "./sidebar-context"
 import { createClient } from "@/lib/supabase/client"
+import { useTranslations } from "next-intl"
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -20,6 +21,7 @@ export function Sidebar() {
     const { collapsed, toggleSidebar, mobileOpen, setMobileOpen } = useSidebar()
     const pathname = usePathname()
     const router = useRouter()
+    const t = useTranslations("sidebar")
 
     const [user, setUser] = useState<{ email: string; name: string } | null>(null)
 
@@ -95,47 +97,47 @@ export function Sidebar() {
                     <Link
                         href="/dashboard"
                         className={linkClass("/dashboard")}
-                        title="Dashboard"
+                        title={t("dashboard")}
                     >
                         <LayoutDashboard className="w-5 h-5 shrink-0" />
-                        {!collapsed && <span>Dashboard</span>}
+                        {!collapsed && <span>{t("dashboard")}</span>}
                     </Link>
 
                     <Link
                         href="/riwayat"
                         className={linkClass("/riwayat")}
-                        title="Riwayat"
+                        title={t("riwayat")}
                     >
                         <History className="w-5 h-5 shrink-0" />
-                        {!collapsed && <span>Riwayat</span>}
+                        {!collapsed && <span>{t("riwayat")}</span>}
                     </Link>
 
                     <Link
                         href="/webgis"
                         className={linkClass("/webgis")}
-                        title="Webgis"
+                        title={t("webgis")}
                     >
                         <Globe className="w-5 h-5 shrink-0" />
-                        {!collapsed && <span>Webgis</span>}
+                        {!collapsed && <span>{t("webgis")}</span>}
                     </Link>
 
                     {/* Penambahan: Chat Agent di atas Settings */}
                     <Link
                         href="/chat-agent"
                         className={linkClass("/chat-agent")}
-                        title="AI Recommendation"
+                        title={t("aiRecommendation")}
                     >
                         <MessageSquareText className="w-5 h-5 shrink-0" />
-                        {!collapsed && <span>AI Recommendation</span>}
+                        {!collapsed && <span>{t("aiRecommendation")}</span>}
                     </Link>
 
                     <Link
                         href="/settings"
                         className={linkClass("/settings")}
-                        title="Settings"
+                        title={t("settings")}
                     >
                         <Settings className="w-5 h-5 shrink-0" />
-                        {!collapsed && <span>Settings</span>}
+                        {!collapsed && <span>{t("settings")}</span>}
                     </Link>
                 </nav>
                 <div className="p-4 border-t border-sidebar-border">
@@ -179,13 +181,13 @@ export function Sidebar() {
                             <DropdownMenuItem asChild>
                                 <Link href="/account" className="cursor-pointer">
                                     <UserPen className="w-4 h-4" />
-                                    Profil
+                                    {t("profile")}
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                                 <Link href="/admin" className="cursor-pointer">
                                     <MonitorCog className="w-4 h-4" />
-                                    Admin Panel
+                                    {t("adminPanel")}
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
@@ -198,7 +200,7 @@ export function Sidebar() {
                                 }}
                             >
                                 <LogOut className="w-4 h-4" />
-                                Keluar
+                                {t("signOut")}
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

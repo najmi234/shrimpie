@@ -2,18 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
-import { Menu, Bell, Sun, Moon, Search } from "lucide-react"
+import { Menu, Bell, Sun, Moon, Search, Languages } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "./sidebar-context"
 import { GlobalSearch } from "./global-search"
-
-const pageTitles: Record<string, string> = {
-    "/dashboard": "Dashboard",
-    "/riwayat": "Riwayat Monitoring",
-    "/webgis": "WebGIS Tracker",
-    "/chat-agent": "AI Recommendation",
-    "/settings": "Settings"
-}
+import { useTranslations } from "next-intl"
+import { useLocale } from "@/lib/i18n"
 
 export function Navbar() {
     const pathname = usePathname()
@@ -21,6 +15,16 @@ export function Navbar() {
     const [darkMode, setDarkMode] = useState(false)
     const [scrolled, setScrolled] = useState(false)
     const [searchOpen, setSearchOpen] = useState(false)
+    const t = useTranslations("navbar")
+    const { locale, toggleLocale } = useLocale()
+
+    const pageTitles: Record<string, string> = {
+        "/dashboard": t("pageTitles.dashboard"),
+        "/riwayat": t("pageTitles.riwayat"),
+        "/webgis": t("pageTitles.webgis"),
+        "/chat-agent": t("pageTitles.chatAgent"),
+        "/settings": t("pageTitles.settings"),
+    }
 
     const title = pageTitles[pathname] ?? "Shrimpie"
 
@@ -86,7 +90,7 @@ export function Navbar() {
                         onClick={() => setSearchOpen(true)}
                     >
                         <Search className="mr-2 h-4 w-4 shrink-0" />
-                        <span className="flex-1 text-left line-clamp-1">Search...</span>
+                        <span className="flex-1 text-left line-clamp-1">{t("searchPlaceholder")}</span>
                         <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex ml-2 transition-colors group-hover:bg-background">
                             <span className="text-xs">⌘</span>K
                         </kbd>
@@ -94,6 +98,18 @@ export function Navbar() {
                 </div>
 
                 <GlobalSearch open={searchOpen} setOpen={setSearchOpen} />
+
+                {/* Language Toggle */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleLocale}
+                    className="rounded-full px-2.5 gap-1.5 font-semibold text-xs"
+                    title="Switch language"
+                >
+                    <Languages className="w-4 h-4" />
+                    <span>{locale === "id" ? "ID" : "EN"}</span>
+                </Button>
 
                 {/* Theme Switch */}
                 <Button

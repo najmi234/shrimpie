@@ -28,6 +28,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import { useTranslations, useLocale } from "next-intl"
 
 // ---------- types ----------
 
@@ -50,6 +51,10 @@ const ROLE_OPTIONS = [
 
 export default function AdminPage() {
     const supabase = createClient()
+    const locale = useLocale()
+    const t = useTranslations("admin")
+    const tCommon = useTranslations("common")
+    const tAccount = useTranslations("account")
     const [users, setUsers] = useState<UserProfile[]>([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
@@ -135,19 +140,18 @@ export default function AdminPage() {
     const guestCount = users.filter((u) => u.user_role === "guest").length
 
     const getRoleBadge = (role: string | null) => {
-        const opt = ROLE_OPTIONS.find((r) => r.value === role)
-        return opt
-            ? { label: opt.label, color: opt.color }
-            : { label: role || "-", color: "bg-muted text-muted-foreground border-border" }
+        if (role === "admin") return { label: t("administrator"), color: "bg-amber-500/10 text-amber-600 border-amber-500/30" }
+        if (role === "guest") return { label: t("guest"), color: "bg-blue-500/10 text-blue-600 border-blue-500/30" }
+        return { label: role || "-", color: "bg-muted text-muted-foreground border-border" }
     }
 
     return (
         <div className="container mx-auto max-w-4xl space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
+                <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                    Kelola pengguna dan hak akses aplikasi
+                    {t("description")}
                 </p>
             </div>
 
@@ -164,7 +168,7 @@ export default function AdminPage() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-foreground">{users.length}</p>
-                            <p className="text-xs text-muted-foreground">Total Pengguna</p>
+                            <p className="text-xs text-muted-foreground">{t("totalUsers")}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -175,7 +179,7 @@ export default function AdminPage() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-foreground">{adminCount}</p>
-                            <p className="text-xs text-muted-foreground">Administrator</p>
+                            <p className="text-xs text-muted-foreground">{t("administrator")}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -186,7 +190,7 @@ export default function AdminPage() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-foreground">{guestCount}</p>
-                            <p className="text-xs text-muted-foreground">Guest</p>
+                            <p className="text-xs text-muted-foreground">{t("guest")}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -199,7 +203,7 @@ export default function AdminPage() {
                     <Input
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Cari pengguna berdasarkan username atau ID..."
+                        placeholder={t("searchPlaceholder")}
                         className="h-10 pl-10 text-sm border-border rounded-xl"
                     />
                 </div>
@@ -221,7 +225,7 @@ export default function AdminPage() {
                 ) : filteredUsers.length === 0 ? (
                     <Card className="rounded-2xl py-0 border-border">
                         <CardContent className="p-8 text-center text-muted-foreground">
-                            {searchQuery ? "Tidak ada pengguna yang cocok." : "Tidak ada data pengguna."}
+                            {searchQuery ? t("noUsersMatch") : t("noUsersData")}
                         </CardContent>
                     </Card>
                 ) : (
@@ -253,10 +257,10 @@ export default function AdminPage() {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-sm font-semibold text-foreground truncate">
-                                                        {userProfile.username || "Tanpa Username"}
+                                                        {userProfile.username || t("noUsername")}
                                                     </span>
                                                     {isCurrentUser && (
-                                                        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">Anda</span>
+                                                        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{t("you")}</span>
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground truncate mt-0.5">
@@ -266,7 +270,7 @@ export default function AdminPage() {
                                             <div className="flex items-center gap-2 shrink-0">
                                                 {justSaved && (
                                                     <span className="text-xs text-green-500 flex items-center gap-1">
-                                                        <Check className="w-3.5 h-3.5" /> Tersimpan
+                                                        <Check className="w-3.5 h-3.5" /> {tCommon("saved")}
                                                     </span>
                                                 )}
                                                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${badge.color}`}>
@@ -291,17 +295,17 @@ export default function AdminPage() {
                                                             <div className="flex items-center gap-3">
                                                                 <AtSign className="w-4 h-4 text-muted-foreground shrink-0" />
                                                                 <div>
-                                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Username</p>
+                                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{tAccount("username")}</p>
                                                                     <p className="text-sm text-foreground">{userProfile.username || "-"}</p>
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-3">
                                                                 <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
                                                                 <div>
-                                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Tanggal Lahir</p>
+                                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{tAccount("birthDate")}</p>
                                                                     <p className="text-sm text-foreground">
                                                                         {userProfile.birth_date
-                                                                            ? new Date(userProfile.birth_date).toLocaleDateString("id-ID", {
+                                                                            ? new Date(userProfile.birth_date).toLocaleDateString(locale, {
                                                                                 day: "2-digit",
                                                                                 month: "long",
                                                                                 year: "numeric",
@@ -313,14 +317,20 @@ export default function AdminPage() {
                                                             <div className="flex items-center gap-3">
                                                                 <UserIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                                                                 <div>
-                                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Gender</p>
-                                                                    <p className="text-sm text-foreground capitalize">{userProfile.gender || "-"}</p>
+                                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{tAccount("gender")}</p>
+                                                                    <p className="text-sm text-foreground capitalize">
+                                                                        {userProfile.gender === "male"
+                                                                            ? tAccount("male")
+                                                                            : userProfile.gender === "female"
+                                                                                ? tAccount("female")
+                                                                                : userProfile.gender || "-"}
+                                                                    </p>
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-3">
                                                                 <Shield className="w-4 h-4 text-muted-foreground shrink-0" />
                                                                 <div>
-                                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Role</p>
+                                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{tAccount("role")}</p>
                                                                     <p className="text-sm text-foreground capitalize">{userProfile.user_role || "-"}</p>
                                                                 </div>
                                                             </div>
@@ -344,8 +354,8 @@ export default function AdminPage() {
                                                                 >
                                                                     <UserCog className="w-3.5 h-3.5" />
                                                                     {userProfile.user_role === role.value
-                                                                        ? `${role.label} (aktif)`
-                                                                        : `Jadikan ${role.label}`}
+                                                                        ? t("activeRole", { role: role.value === "admin" ? t("administrator") : t("guest") })
+                                                                        : t("setRole", { role: role.value === "admin" ? t("administrator") : t("guest") })}
                                                                 </Button>
                                                             ))}
                                                         </div>
@@ -365,21 +375,21 @@ export default function AdminPage() {
             <Dialog open={!!roleChangeTarget} onOpenChange={(open) => { if (!open) setRoleChangeTarget(null) }}>
                 <DialogContent className="rounded-2xl">
                     <DialogHeader>
-                        <DialogTitle>Konfirmasi Perubahan Role</DialogTitle>
+                        <DialogTitle>{t("roleChangeTitle")}</DialogTitle>
                         <DialogDescription>
-                            Ubah role pengguna{" "}
-                            <span className="font-semibold text-foreground">{roleChangeTarget?.user.username || "user"}</span>
-                            {" "}menjadi{" "}
-                            <span className="font-semibold text-foreground capitalize">{roleChangeTarget?.newRole}</span>?
+                            {t("roleChangeDescription", {
+                                username: roleChangeTarget?.user.username || t("noUsername") || "",
+                                role: (roleChangeTarget?.newRole === "admin" ? t("administrator") : t("guest")) || ""
+                            })}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setRoleChangeTarget(null)} disabled={roleChangeLoading}>
-                            Batal
+                            {tCommon("cancel")}
                         </Button>
                         <Button onClick={handleRoleChange} disabled={roleChangeLoading} className="gap-2">
                             {roleChangeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-                            Konfirmasi
+                            {tCommon("confirm")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

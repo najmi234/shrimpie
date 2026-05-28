@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Suspense } from "react"
+import { useTranslations } from "next-intl"
 
 interface PondMetric {
     pond_id: string
@@ -44,6 +45,7 @@ interface PondOption {
 
 function ChatAgentContent() {
     const supabase = createClient()
+    const t = useTranslations("chatAgent")
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -255,10 +257,10 @@ function ChatAgentContent() {
         const diffHours = Math.floor(diffMs / 3600000)
         const diffDays = Math.floor(diffMs / 86400000)
 
-        if (diffMins < 1) return "Baru saja"
-        if (diffMins < 60) return `${diffMins} menit lalu`
-        if (diffHours < 24) return `${diffHours} jam lalu`
-        if (diffDays < 7) return `${diffDays} hari lalu`
+        if (diffMins < 1) return t("justNow")
+        if (diffMins < 60) return t("minutesAgo", { count: diffMins })
+        if (diffHours < 24) return t("hoursAgo", { count: diffHours })
+        if (diffDays < 7) return t("daysAgo", { count: diffDays })
 
         const dd = String(date.getDate()).padStart(2, "0")
         const mm = String(date.getMonth() + 1).padStart(2, "0")
@@ -282,7 +284,7 @@ function ChatAgentContent() {
                             size="sm"
                         >
                             <Plus className="w-4 h-4" />
-                            Chat Baru
+                            {t("newChat")}
                         </Button>
                     </div>
 
@@ -296,7 +298,7 @@ function ChatAgentContent() {
                             <div className="px-3 py-8 text-center">
                                 <MessageSquare className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
                                 <p className="text-xs text-muted-foreground">
-                                    Belum ada riwayat percakapan
+                                    {t("noHistory")}
                                 </p>
                             </div>
                         ) : (
@@ -317,7 +319,7 @@ function ChatAgentContent() {
                                             <div className="min-w-0 flex-1">
                                                 <p className="truncate font-medium text-xs leading-snug">
                                                     {conv.title ||
-                                                        "Percakapan tanpa judul"}
+                                                        t("untitledConversation")}
                                                 </p>
                                                 <div className="flex items-center gap-1.5 mt-1">
                                                     {conv.device_name && (
@@ -343,7 +345,7 @@ function ChatAgentContent() {
                                                 )
                                             }
                                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
-                                            title="Hapus percakapan"
+                                            title={t("deleteConversation")}
                                         >
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </button>
@@ -368,8 +370,8 @@ function ChatAgentContent() {
                             onClick={() => setSidebarOpen(!sidebarOpen)}
                             title={
                                 sidebarOpen
-                                    ? "Tutup sidebar"
-                                    : "Buka sidebar"
+                                    ? t("closeSidebar")
+                                    : t("openSidebar")
                             }
                         >
                             {sidebarOpen ? (
@@ -380,7 +382,7 @@ function ChatAgentContent() {
                         </Button>
 
                         <span className="text-sm font-medium text-muted-foreground shrink-0">
-                            Pond:
+                            {t("pond")}:
                         </span>
                         <div className="w-64">
                             <Combobox
@@ -391,10 +393,10 @@ function ChatAgentContent() {
                                     setSelectedPondName(val)
                                 }}
                             >
-                                <ComboboxInput className="w-full bg-background border-border" placeholder="Pilih Kolam" />
+                                <ComboboxInput className="w-full bg-background border-border" placeholder={t("selectPondPlaceholder")} />
                                 <ComboboxContent>
                                     <ComboboxEmpty>
-                                        Tidak ada kolam.
+                                        {t("noPonds")}
                                     </ComboboxEmpty>
                                     <ComboboxList>
                                         {(item) => (

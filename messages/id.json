@@ -1,0 +1,367 @@
+{
+  "common": {
+    "loading": "Memuat...",
+    "save": "Simpan",
+    "saving": "Menyimpan...",
+    "saved": "Tersimpan",
+    "cancel": "Batal",
+    "delete": "Hapus",
+    "add": "Tambah",
+    "confirm": "Konfirmasi",
+    "search": "Cari...",
+    "noData": "Tidak ada data.",
+    "processing": "Memproses…",
+    "back": "Kembali"
+  },
+  "landing": {
+    "nav": {
+      "features": "Fitur",
+      "technology": "Teknologi",
+      "webgis": "WebGIS",
+      "about": "Tentang Kami",
+      "login": "Masuk",
+      "register": "Daftar"
+    },
+    "hero": {
+      "badge": "Solusi Cerdas untuk Tambak Udang",
+      "titleLine1": "Revolusi Tambak Udang dengan",
+      "typingWords": [
+        "Kecerdasan Buatan",
+        "Artificial Intelligence"
+      ],
+      "description": "Monitoring pertumbuhan udang Vannamei secara real-time menggunakan Computer Vision dan kontrol IoT yang presisi.",
+      "ctaDashboard": "Buka Beranda",
+      "ctaLearnMore": "Pelajari Teknologi Kami"
+    },
+    "stats": {
+      "detectionAccuracy": "Akurasi Deteksi",
+      "responseTime": "Waktu Respons",
+      "connectedDevices": "Device Terhubung",
+      "activePonds": "Tambak Aktif"
+    },
+    "features": {
+      "sectionLabel": "Fitur Utama",
+      "sectionTitle": "Teknologi Mutakhir untuk Tambak Modern",
+      "sectionDescription": "Empat pilar teknologi yang bekerja sinergis untuk meningkatkan efisiensi dan produktivitas tambak.",
+      "aiGrowth": {
+        "title": "AI Growth Monitoring",
+        "description": "Deteksi otomatis panjang dan berat udang menggunakan model YOLOv11 dan regresi presisi tinggi."
+      },
+      "iotControl": {
+        "title": "IoT Smart Control",
+        "description": "Monitoring daya listrik (PZEM-004T) dan kontrol otomatis kincir air (paddlewheel) menggunakan ESP32."
+      },
+      "edgeComputing": {
+        "title": "Edge Computing",
+        "description": "Integrasi mulus dengan hardware Jetson Nano untuk pemrosesan video langsung di lokasi tambak."
+      },
+      "analytics": {
+        "title": "Real-time Analytics",
+        "description": "Visualisasi data interaktif untuk memantau kesehatan ekosistem tambak secara real-time."
+      }
+    },
+    "howItWorks": {
+      "sectionLabel": "Cara Kerja",
+      "sectionTitle": "Dari Kamera ke Beranda dalam Hitungan Detik",
+      "step1": {
+        "title": "Capture & Analyze",
+        "description": "Kamera menangkap gambar udang, lalu AI mengidentifikasi ukuran dan berat secara otomatis."
+      },
+      "step2": {
+        "title": "Edge Processing",
+        "description": "Data diproses langsung di Jetson Nano, mengurangi latensi dan kebutuhan koneksi internet."
+      },
+      "step3": {
+        "title": "Visualize & Act",
+        "description": "Hasil analisis ditampilkan di Beranda real-time dan perangkat IoT merespons secara otomatis."
+      }
+    },
+    "monitoring": {
+      "sectionLabel": "Live Preview",
+      "sectionTitle": "Metrik yang Dipantau Secara Real-time",
+      "avgBodyLength": "Avg Body Length",
+      "avgBodyWeight": "Avg Body Weight",
+      "activityLevel": "Activity Level"
+    },
+    "techStack": {
+      "sectionLabel": "Tech Stack",
+      "sectionTitle": "Dibangun dengan Teknologi Terbaik",
+      "sectionDescription": "Kombinasi framework dan hardware canggih untuk performa optimal."
+    },
+    "webgis": {
+      "sectionLabel": "WebGIS",
+      "sectionTitle": "Pemetaan Tambak Berbasis Web",
+      "description": "Visualisasikan lokasi semua tambak Anda dalam satu peta interaktif. Pantau status setiap kolam, perangkat terhubung, dan kondisi lingkungan secara spasial.",
+      "feature1": "Lokasi tambak real-time dengan koordinat GPS",
+      "feature2": "Overlay data kualitas air per kolam",
+      "feature3": "Analisis spasial area sekitar tambak",
+      "viewWebgis": "Lihat WebGIS",
+      "interactiveMap": "Peta Interaktif Tambak"
+    },
+    "cta": {
+      "title": "Siap Mengoptimalkan Tambak Anda?",
+      "description": "Mulai monitoring cerdas sekarang dan tingkatkan produktivitas tambak udang Anda.",
+      "startNow": "Mulai Sekarang",
+      "contactUs": "Hubungi Kami"
+    },
+    "about": {
+      "sectionLabel": "Tentang Kami",
+      "sectionTitle": "Tim di Balik Shrimpie",
+      "description": "Kami adalah tim mahasiswa dan peneliti yang bersemangat menggabungkan kecerdasan buatan dengan akuakultur untuk membantu petambak Indonesia meningkatkan hasil panen secara berkelanjutan."
+    },
+    "footer": {
+      "tagline": "Solusi cerdas untuk manajemen tambak udang Vannamei menggunakan AI Computer Vision dan IoT.",
+      "product": "Produk",
+      "contact": "Kontak",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service"
+    }
+  },
+  "login": {
+    "title": "Masuk ke Shrimpie",
+    "description": "Masukkan email dan password untuk melanjutkan",
+    "emailLabel": "Email",
+    "emailPlaceholder": "nama@email.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "••••••••",
+    "showPassword": "Tampilkan password",
+    "hidePassword": "Sembunyikan password",
+    "submit": "Masuk",
+    "googleSignIn": "Masuk dengan Google",
+    "noAccount": "Belum punya akun?",
+    "register": "Daftar",
+    "googleError": "Terjadi kesalahan saat masuk dengan Google.",
+    "validationEmail": "Masukkan alamat email yang valid",
+    "validationPassword": "Password minimal 8 karakter"
+  },
+  "signup": {
+    "title": "Daftar Akun Shrimpie",
+    "description": "Buat akun baru untuk mulai mengelola tambak Anda",
+    "nameLabel": "Nama Lengkap",
+    "namePlaceholder": "John Doe",
+    "emailLabel": "Email",
+    "emailPlaceholder": "nama@email.com",
+    "passwordLabel": "Password",
+    "passwordMinChars": "Minimal 8 karakter.",
+    "confirmPasswordLabel": "Konfirmasi Password",
+    "confirmPasswordHint": "Silakan konfirmasi password Anda.",
+    "showPassword": "Tampilkan password",
+    "hidePassword": "Sembunyikan password",
+    "submit": "Buat Akun",
+    "googleSignUp": "Daftar dengan Google",
+    "hasAccount": "Sudah punya akun?",
+    "login": "Masuk",
+    "googleError": "Terjadi kesalahan saat mendaftar dengan Google.",
+    "successTitle": "Cek Email Anda",
+    "successDescription": "Kami telah mengirimkan link verifikasi ke email Anda. Silakan buka inbox dan klik link tersebut untuk mengaktifkan akun.",
+    "successAlert": "Registrasi berhasil!",
+    "successHint": "Jika email tidak ditemukan, cek folder spam atau promosi.",
+    "verifiedQuestion": "Sudah verifikasi?",
+    "validationName": "Nama lengkap harus diisi",
+    "validationEmail": "Masukkan alamat email yang valid",
+    "validationPassword": "Password minimal 8 karakter",
+    "validationConfirmPassword": "Konfirmasi password harus diisi",
+    "validationPasswordMatch": "Password dan konfirmasi password tidak cocok"
+  },
+  "navbar": {
+    "pageTitles": {
+      "dashboard": "Beranda",
+      "riwayat": "Riwayat Monitoring",
+      "webgis": "WebGIS Tracker",
+      "chatAgent": "Rekomendasi AI",
+      "settings": "Pengaturan"
+    },
+    "searchPlaceholder": "Search..."
+  },
+  "sidebar": {
+    "dashboard": "Beranda",
+    "riwayat": "Riwayat",
+    "webgis": "Webgis",
+    "aiRecommendation": "Rekomendasi AI",
+    "settings": "Pengaturan",
+    "profile": "Profil",
+    "adminPanel": "Admin Panel",
+    "signOut": "Keluar"
+  },
+  "globalSearch": {
+    "placeholder": "Ketik perintah atau cari...",
+    "noResults": "Tidak ada hasil.",
+    "pages": "Halaman",
+    "quickActions": "Aksi Cepat",
+    "dashboard": "Beranda",
+    "webgisTracker": "WebGIS Tracker",
+    "chatAdvisor": "Chat Advisor",
+    "viewLatestMetrics": "Lihat Metrik Terbaru",
+    "settings": "Pengaturan"
+  },
+  "dashboard": {
+    "loadingVideo": "Memuat video...",
+    "selectPond": "Pilih Kolam",
+    "selectPondPlaceholder": "Pilih Kolam",
+    "noPondsFound": "Kolam tidak ditemukan.",
+    "selectVideo": "Pilih Video",
+    "shrimpHealthy": "Kondisi udang terlihat sehat dengan tingkat keaktifan normal.",
+    "analyzeWithAI": "Analyze with AI",
+    "handlingRecommendation": "Handling Recommendation",
+    "noMetrics": "Belum ada data metrik untuk kolam ini.",
+    "lastData": "Data terakhir",
+    "docDays": "DOC {doc} hari",
+    "avgBodyLength": "Avg Body Length (cm)",
+    "avgBodyWeight": "Avg Body Weight (g)",
+    "activityLevel": "Activity Level (px/s)",
+    "recommendations": {
+      "noStockingDate": "Data stocking_date belum tersedia untuk kolam ini. Silakan isi tanggal tebar di database.",
+      "outOfRange": "DOC di luar jangkauan program pakan.",
+      "phase": "📅 DOC {doc} — Fase {phase}",
+      "frequency": "🍤 Frekuensi pakan: {frequency}{rate}",
+      "rate": " | Feeding rate: {rate}",
+      "weightUnder": "⚠️ Berat ({weight}g) di bawah target ({min}–{max}g). Pertimbangkan tingkatkan kualitas pakan dan cek kualitas air.",
+      "weightOver": "✅ Berat ({weight}g) melebihi target ({min}–{max}g). Pertumbuhan sangat baik.",
+      "weightNormal": "✅ Berat ({weight}g) sesuai target ({min}–{max}g).",
+      "lengthUnder": "⚠️ Panjang ({length}cm) di bawah target ({min}–{max}cm). Evaluasi nutrisi pakan.",
+      "lengthOver": "✅ Panjang ({length}cm) melebihi target ({min}–{max}cm).",
+      "lengthNormal": "✅ Panjang ({length}cm) sesuai target ({min}–{max}cm).",
+      "activityVeryLow": "🚨 Aktivitas ({activity} px/s) sangat rendah. Segera cek kualitas air (DO, pH, salinitas) dan pastikan aerasi berjalan optimal. Kurangi porsi pakan sementara.",
+      "activityLow": "⚠️ Aktivitas ({activity} px/s) cukup rendah. Pantau kualitas air dan perhatikan tanda-tanda stres pada udang.",
+      "activityHigh": "⚠️ Aktivitas ({activity} px/s) sangat tinggi. Kemungkinan udang stres atau ada perubahan lingkungan mendadak. Periksa suhu dan parameter air.",
+      "activityNormal": "✅ Aktivitas ({activity} px/s) normal."
+    }
+  },
+  "riwayat": {
+    "selectPondPlaceholder": "Pilih Kolam",
+    "noPondFound": "Kolam tidak ditemukan.",
+    "from": "From",
+    "to": "To",
+    "avgBodyLength": "Avg Body Length (cm)",
+    "avgBodyWeight": "Avg Body Weight (g)",
+    "activityLevel": "Activity Level (px/s)",
+    "dailyDetail": "Detail Data Harian",
+    "date": "Tanggal",
+    "doc": "DOC",
+    "pond": "Kolam",
+    "avgLength": "Avg Body Length",
+    "avgWeight": "Avg Body Weight",
+    "activity": "Activity Level",
+    "details": "Rincian",
+    "action": "Aksi",
+    "location": "Lokasi",
+    "data": "data",
+    "confirmDelete": "Yakin ingin menghapus data ini?",
+    "confirmDeleteDay": "Yakin ingin menghapus semua {count} data di hari ini?",
+    "viewOnWebgis": "Lihat di WebGIS"
+  },
+  "chatAgent": {
+    "newChat": "Chat Baru",
+    "noHistory": "Belum ada riwayat percakapan",
+    "untitledConversation": "Percakapan tanpa judul",
+    "deleteConversation": "Hapus percakapan",
+    "pond": "Pond:",
+    "selectPondPlaceholder": "Pilih Kolam",
+    "noPonds": "Tidak ada kolam.",
+    "closeSidebar": "Tutup sidebar",
+    "openSidebar": "Buka sidebar",
+    "justNow": "Baru saja",
+    "minutesAgo": "{count} menit lalu",
+    "hoursAgo": "{count} jam lalu",
+    "daysAgo": "{count} hari lalu"
+  },
+  "settings": {
+    "title": "Pengaturan",
+    "description": "Kelola pengaturan aplikasi monitoring udang",
+    "pondSettings": {
+      "label": "Pengaturan Kolam",
+      "description": "Kelola data kolam, stocking date, dan nama kolam",
+      "addPond": "Tambah Kolam",
+      "addPondTitle": "Tambah Kolam Baru",
+      "addPondDescription": "Isi informasi kolam baru yang ingin ditambahkan.",
+      "pondName": "Nama Kolam",
+      "stockingDate": "Stocking Date",
+      "locationLabel": "Lokasi (lng, lat)",
+      "noPonds": "Tidak ada data kolam. Klik \"Tambah Kolam\" untuk menambah."
+    },
+    "deviceSettings": {
+      "label": "Pengaturan Perangkat",
+      "description": "Lihat dan kelola informasi perangkat monitoring",
+      "addDevice": "Tambah Perangkat",
+      "addDeviceTitle": "Tambah Perangkat Baru",
+      "addDeviceDescription": "Isi informasi perangkat baru yang ingin ditambahkan.",
+      "deviceName": "Nama Perangkat",
+      "pondLabel": "Kolam",
+      "pondOptional": "Kolam (opsional)",
+      "selectPondPlaceholder": "Pilih Kolam",
+      "noPondFound": "Kolam tidak ditemukan.",
+      "status": "Status",
+      "lastUpdate": "Last Update",
+      "active": "Active",
+      "inactive": "Inactive",
+      "noDevices": "Tidak ada data perangkat. Klik \"Tambah Perangkat\" untuk menambah."
+    },
+    "deleteConfirmTitle": "Konfirmasi Hapus",
+    "deleteConfirmDescription": "Yakin ingin menghapus {type} \"{name}\"? Tindakan ini tidak dapat dibatalkan.",
+    "deleteTypePond": "kolam",
+    "deleteTypeDevice": "perangkat"
+  },
+  "account": {
+    "title": "Profil Saya",
+    "description": "Kelola informasi profil akun Anda",
+    "accountInfo": "Informasi Akun",
+    "email": "Email",
+    "username": "Username",
+    "birthDate": "Tanggal Lahir",
+    "gender": "Jenis Kelamin",
+    "male": "Laki-laki",
+    "female": "Perempuan",
+    "role": "Role",
+    "saveChanges": "Simpan Perubahan",
+    "signOutTitle": "Keluar dari Akun",
+    "signOutDescription": "Anda akan diarahkan ke halaman login.",
+    "signOut": "Keluar"
+  },
+  "admin": {
+    "title": "Admin Panel",
+    "description": "Kelola pengguna dan hak akses aplikasi",
+    "totalUsers": "Total Pengguna",
+    "administrator": "Administrator",
+    "guest": "Guest",
+    "searchPlaceholder": "Cari pengguna berdasarkan username atau ID...",
+    "noUsername": "Tanpa Username",
+    "you": "Anda",
+    "noUsersMatch": "Tidak ada pengguna yang cocok.",
+    "noUsersData": "Tidak ada data pengguna.",
+    "birthDate": "Tanggal Lahir",
+    "roleChangeTitle": "Konfirmasi Perubahan Role",
+    "roleChangeDescription": "Ubah role pengguna {username} menjadi {role}?",
+    "activeRole": "{role} (aktif)",
+    "setRole": "Jadikan {role}"
+  },
+  "chatInterface": {
+    "welcomePrefix": "Halo! Saya adalah **Shrimpie Advisor** Anda.",
+    "welcomePond": " Saya telah menganalisis data dari kolam **{pondName}**.",
+    "welcomePondParams": "**Parameter Kolam Saat Ini:**",
+    "avgWeight": "Rata-rata Berat: **{weight} gram**",
+    "avgLength": "Rata-rata Panjang: **{length} cm**",
+    "activityLevel": "Tingkat Keaktifan: **{activity}%**",
+    "docDays": "Umur Udang (DOC): **{doc} hari**",
+    "welcomeSuffix": "Ada yang bisa saya bantu terkait penanganan udang Anda hari ini?",
+    "avgWeightLabel": "Rata-rata Berat",
+    "avgLengthLabel": "Rata-rata Panjang",
+    "activityLevelLabel": "Tingkat Keaktifan",
+    "docLabel": "DOC (Umur Udang)",
+    "lastDataLabel": "Data Terakhir",
+    "gram": "gram",
+    "cm": "cm",
+    "pxs": "px/s",
+    "days": "hari",
+    "kolam": "Kolam {pondName}",
+    "you": "Anda",
+    "advisor": "Shrimpie Advisor",
+    "errorProcessing": "Gagal memproses rekomendasi.",
+    "errorGeneral": "Maaf, terjadi kesalahan saat memproses permintaan Anda.",
+    "errorServer": "Maaf, sistem sedang mengalami gangguan. Silakan coba beberapa saat lagi.",
+    "retry": "Coba Lagi",
+    "analyzing": "Menganalisis data...",
+    "inputPlaceholder": "Tanyakan tentang rekomendasi pengelolaan udang, kualitas pakan, dll...",
+    "send": "Kirim pesan",
+    "warningNotice": "AI Advisor dapat melakukan kesalahan. Selalu verifikasi rekomendasi penting dengan ahli."
+  }
+}
