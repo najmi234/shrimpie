@@ -8,6 +8,7 @@ import { motion } from "framer-motion"
 import { Ruler, Weight, Activity, Sparkles, ExternalLink, Lightbulb } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { parseDateAsLocal } from "@/lib/utils"
 import {
   Combobox,
   ComboboxContent,
@@ -104,7 +105,7 @@ function getHandlingRecommendation(doc: number | null, weight: number, length: n
 }
 
 function formatRecordedAt(recorded_at: string) {
-  const d = new Date(recorded_at)
+  const d = parseDateAsLocal(recorded_at)
   const dd = String(d.getDate()).padStart(2, "0")
   const mm = String(d.getMonth() + 1).padStart(2, "0")
   const yyyy = d.getFullYear()
@@ -243,7 +244,7 @@ export default function ShrimpMonitoringDashboard() {
     if (!stockingDate) return null
     const stocking = new Date(stockingDate)
     const endDate = latestMetricRecord
-      ? new Date(latestMetricRecord.recorded_at)
+      ? parseDateAsLocal(latestMetricRecord.recorded_at)
       : new Date()
     return Math.floor((endDate.getTime() - stocking.getTime()) / (1000 * 60 * 60 * 24))
   }, [stockingDate, latestMetricRecord])

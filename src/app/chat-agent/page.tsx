@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Suspense } from "react"
 import { useTranslations } from "next-intl"
+import { parseDateAsLocal } from "@/lib/utils"
 
 interface PondMetric {
     pond_id: string
@@ -191,7 +192,7 @@ function ChatAgentContent() {
         if (!stockingDate) return null
         const stocking = new Date(stockingDate)
         const endDate = latestMetric
-            ? new Date(latestMetric.recorded_at)
+            ? parseDateAsLocal(latestMetric.recorded_at)
             : new Date()
         const diffDays = Math.floor(
             (endDate.getTime() - stocking.getTime()) / (1000 * 60 * 60 * 24)
@@ -250,7 +251,7 @@ function ChatAgentContent() {
     }
 
     const formatConversationDate = (dateStr: string) => {
-        const date = new Date(dateStr)
+        const date = parseDateAsLocal(dateStr)
         const now = new Date()
         const diffMs = now.getTime() - date.getTime()
         const diffMins = Math.floor(diffMs / 60000)

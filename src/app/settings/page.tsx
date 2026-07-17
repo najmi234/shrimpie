@@ -37,6 +37,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { useTranslations } from "next-intl"
+import { parseDateAsLocal } from "@/lib/utils"
 
 // ---------- types ----------
 
@@ -676,7 +677,7 @@ export default function SettingsPage() {
                         : t("deviceSettings.inactive")
 
                     const lastUpdate = device.last_update_at
-                        ? new Date(device.last_update_at).toLocaleString("id-ID", {
+                        ? parseDateAsLocal(device.last_update_at).toLocaleString("id-ID", {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",

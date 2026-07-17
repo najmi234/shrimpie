@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { format, subDays, differenceInDays, parseISO } from "date-fns"
 import { createClient } from "@/lib/supabase/client"
 import { useTranslations } from "next-intl"
+import { parseDateAsLocal } from "@/lib/utils"
 
 // ---------- types ----------
 
@@ -155,7 +156,7 @@ function RiwayatPageContent() {
             return
         }
         const formatted: MetricRow[] = (data ?? []).map((m) => {
-            const d = new Date(m.recorded_at)
+            const d = parseDateAsLocal(m.recorded_at)
             return {
                 id: m.id,
                 date: format(d, "dd MMM"),

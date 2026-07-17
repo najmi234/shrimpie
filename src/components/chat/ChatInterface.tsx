@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
     Send,
     Bot,
@@ -25,6 +26,7 @@ import {
     type ChatMessageRow,
 } from "@/lib/chat/chat-persistence";
 import { useTranslations } from "next-intl";
+import { parseDateAsLocal } from "@/lib/utils";
 
 // Type definitions
 interface PondMetric {
@@ -62,7 +64,7 @@ interface ChatInterfaceProps {
 }
 
 function formatDate(dateStr: string) {
-    const d = new Date(dateStr);
+    const d = parseDateAsLocal(dateStr);
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
@@ -82,7 +84,7 @@ function buildWelcomeMessage(parameters: PondParameters, t: any): ChatMessage {
 ${t("welcomePondParams")}
 - ${t("avgWeightLabel")}: **${parameters.avg_weight.toFixed(1)} ${t("gram")}**
 - ${t("avgLengthLabel")}: **${parameters.avg_length.toFixed(1)} ${t("cm")}**
-- ${t("activityLevelLabel")}: **${parameters.activity_level.toFixed(1)}%**${docText}
+- ${t("activityLevelLabel")}: **${parameters.activity_level.toFixed(1)} px/s**${docText}
 
 ${t("welcomeSuffix")}`,
         createdAt: new Date(),
@@ -126,7 +128,7 @@ export default function ChatInterface({
                 id: r.id,
                 role: r.role,
                 content: r.content,
-                createdAt: new Date(r.created_at),
+                createdAt: parseDateAsLocal(r.created_at),
             }));
             setMessages(loaded);
         }
@@ -495,6 +497,7 @@ export default function ChatInterface({
                                         <div className="whitespace-pre-wrap">{message.content}</div>
                                     ) : (
                                         <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
                                             components={{
                                                 table: ({ node, ...props }) => <div className="overflow-x-auto my-4"><table className="w-full border-collapse border text-sm" {...props} /></div>,
                                                 th: ({ node, ...props }) => <th className="border bg-muted/50 px-3 py-2 text-left font-semibold" {...props} />,

@@ -1,8 +1,8 @@
 /**
- * Document Ingestion Script for RAG
+ * Document Ingestion Script for RAG (LangChain version)
  *
- * Reads all .txt and .pdf files from the /docs folder,
- * splits them into chunks, generates embeddings, and stores in Supabase.
+ * Reads all .txt, .md, and .pdf files from the /docs folder,
+ * splits them into chunks, generates embeddings via OpenRouter, and stores in Supabase.
  *
  * Usage:
  *   npx tsx scripts/ingest-docs.ts
@@ -14,7 +14,9 @@ dotenv.config({ path: ".env.local" });
 import * as fs from "fs";
 import * as path from "path";
 import { createClient } from "@supabase/supabase-js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
+import { Document } from "@langchain/core/documents";
 import { PDFParse } from "pdf-parse";
 
 // ─── Config ───────────────────────────────────────────────
@@ -22,21 +24,40 @@ const CHUNK_SIZE = 1000; // characters per chunk
 const CHUNK_OVERLAP = 200; // overlap between chunks
 const DOCS_DIR = path.join(process.cwd(), "docs");
 
-// ─── Init clients ─────────────────────────────────────────
+// ─── Validate environment ─────────────────────────────────
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
 if (!supabaseUrl || !supabaseKey) {
-    console.error("❌ Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local");
+    console.error(
+        "❌ Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local"
+    );
     process.exit(1);
 }
-if (!process.env.GEMINI_API_KEY) {
-    console.error("❌ Missing GEMINI_API_KEY in .env.local");
+if (!process.env.OPENROUTER_API_KEY) {
+    console.error("❌ Missing OPENROUTER_API_KEY in .env.local");
     process.exit(1);
 }
 
+// ─── Init clients ─────────────────────────────────────────
 const supabase = createClient(supabaseUrl, supabaseKey);
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+const embeddings = new OpenAIEmbeddings({
+    model: "openai/text-embedding-3-small",
+    dimensions: 768,
+    configuration: {
+        baseURL: "https://openrouter.ai/api/v1",
+    },
+    apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const vectorStore = new SupabaseVectorStore(embeddings, {
+    client: supabase,
+    tableName: "documents",
+    queryName: "match_documents",
+});
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -49,15 +70,6 @@ function splitIntoChunks(text: string): string[] {
         start += CHUNK_SIZE - CHUNK_OVERLAP;
     }
     return chunks;
-}
-
-async function generateEmbedding(text: string): Promise<number[]> {
-    const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-    const result = await model.embedContent({
-        content: { role: "user", parts: [{ text }] },
-        outputDimensionality: 768,
-    } as any);
-    return result.embedding.values;
 }
 
 async function readFileContent(filePath: string): Promise<string> {
@@ -80,7 +92,9 @@ async function readFileContent(filePath: string): Promise<string> {
         }
     }
 
-    console.warn(`⚠️  Unsupported file type: ${ext}, skipping ${path.basename(filePath)}`);
+    console.warn(
+        `⚠️  Unsupported file type: ${ext}, skipping ${path.basename(filePath)}`
+    );
     return "";
 }
 
@@ -90,7 +104,9 @@ async function main() {
     console.log("📂 Reading documents from:", DOCS_DIR);
 
     if (!fs.existsSync(DOCS_DIR)) {
-        console.error(`❌ Folder 'docs/' tidak ditemukan. Buat folder dan taruh dokumen di dalamnya.`);
+        console.error(
+            `❌ Folder 'docs/' tidak ditemukan. Buat folder dan taruh dokumen di dalamnya.`
+        );
         process.exit(1);
     }
 
@@ -105,6 +121,18 @@ async function main() {
     }
 
     console.log(`📄 Found ${files.length} file(s): ${files.join(", ")}\n`);
+
+    // ─── Clean old data before re-ingesting ───────────────
+    console.log("🗑️  Clearing existing documents from database...");
+    const { error: truncError } = await supabase
+        .from("documents")
+        .delete()
+        .neq("id", 0); // Delete all rows
+    if (truncError) {
+        console.warn(`⚠️  Could not clear old documents: ${truncError.message}`);
+    } else {
+        console.log("   ✅ Old documents cleared.\n");
+    }
 
     let totalChunks = 0;
 
@@ -121,32 +149,39 @@ async function main() {
         const chunks = splitIntoChunks(content);
         console.log(`   ✂️  Split into ${chunks.length} chunk(s)`);
 
-        for (let i = 0; i < chunks.length; i++) {
-            const chunk = chunks[i];
-            process.stdout.write(`   🔄 Embedding chunk ${i + 1}/${chunks.length}...`);
+        // Build LangChain Document array for this file
+        const documents: Document[] = chunks.map((chunk, i) => ({
+            pageContent: chunk,
+            metadata: {
+                source: file,
+                chunk_index: i,
+                total_chunks: chunks.length,
+            },
+        }));
 
-            const embedding = await generateEmbedding(chunk);
+        // Insert all chunks at once using LangChain vector store
+        process.stdout.write(
+            `   🔄 Embedding & inserting ${documents.length} chunk(s)...`
+        );
 
-            const { error } = await supabase.from("documents").insert({
-                content: chunk,
-                embedding,
-                metadata: {
-                    source: file,
-                    chunk_index: i,
-                    total_chunks: chunks.length,
-                },
-            });
+        try {
+            // Process in batches to avoid rate limits
+            const BATCH_SIZE = 5;
+            for (let i = 0; i < documents.length; i += BATCH_SIZE) {
+                const batch = documents.slice(i, i + BATCH_SIZE);
+                await vectorStore.addDocuments(batch);
+                totalChunks += batch.length;
 
-            if (error) {
-                console.error(` ❌ Error: ${error.message}`);
-            } else {
-                console.log(` ✅`);
-                totalChunks++;
+                if (i + BATCH_SIZE < documents.length) {
+                    // Rate limiting: small delay between batches
+                    await new Promise((r) => setTimeout(r, 500));
+                }
             }
-
-            // Rate limiting: small delay between API calls
-            await new Promise((r) => setTimeout(r, 200));
+            console.log(` ✅`);
+        } catch (err: any) {
+            console.error(` ❌ Error: ${err.message}`);
         }
+
         console.log();
     }
 

@@ -342,7 +342,7 @@
     "welcomePondParams": "**Current Pond Parameters:**",
     "avgWeight": "Average Weight: **{weight} grams**",
     "avgLength": "Average Length: **{length} cm**",
-    "activityLevel": "Activity Level: **{activity}%**",
+    "activityLevel": "Activity Level: **{activity} px/s**",
     "docDays": "Days of Culture (DOC): **{doc} days**",
     "welcomeSuffix": "Is there anything I can help you with regarding your shrimp management today?",
     "avgWeightLabel": "Average Weight",

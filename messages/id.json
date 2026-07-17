@@ -342,7 +342,7 @@
     "welcomePondParams": "**Parameter Kolam Saat Ini:**",
     "avgWeight": "Rata-rata Berat: **{weight} gram**",
     "avgLength": "Rata-rata Panjang: **{length} cm**",
-    "activityLevel": "Tingkat Keaktifan: **{activity}%**",
+    "activityLevel": "Tingkat Keaktifan: **{activity} px/s**",
     "docDays": "Umur Udang (DOC): **{doc} hari**",
     "welcomeSuffix": "Ada yang bisa saya bantu terkait penanganan udang Anda hari ini?",
     "avgWeightLabel": "Rata-rata Berat",

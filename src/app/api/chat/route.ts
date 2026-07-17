@@ -1,8 +1,14 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ChatOpenRouter } from "@langchain/openrouter";
+import {
+    SystemMessage,
+    HumanMessage,
+    AIMessage,
+} from "@langchain/core/messages";
 import { searchDocuments } from "@/lib/rag/embeddings.server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { chatRateLimiter } from "@/lib/rate-limit";
+import { parseDateAsLocal } from "@/lib/utils";
 
 import { z } from "zod";
 
@@ -101,9 +107,6 @@ const requestSchema = z.object({
     conversationId: z.string().uuid("ID percakapan tidak valid").optional().nullable(),
 });
 
-// Initialize Gemini API
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
 /**
  * Get a Supabase admin client for server-side operations.
  */
@@ -196,9 +199,9 @@ export async function POST(req: Request) {
 
         const { messages, parameters, conversationId } = validationResult.data;
 
-        if (!process.env.GEMINI_API_KEY) {
-            console.warn("GEMINI_API_KEY is not set. Using mock response.");
-            const mockText = `**[MOCK MODE: API Key Not Found]**\n\nBerdasarkan parameter udang Anda:\n- **Berat**: ${parameters.avg_weight}g\n- **Panjang**: ${parameters.avg_length}cm\n- **Keaktifan**: ${parameters.activity_level}%\n\nRekomendasi:\n1. Tingkatkan pemberian pakan berprotein tinggi\n2. Periksa kincir air karena tingkat keaktifan sedikit di bawah batas optimal.`;
+        if (!process.env.OPENROUTER_API_KEY) {
+            console.warn("OPENROUTER_API_KEY is not set. Using mock response.");
+            const mockText = `**[MOCK MODE: API Key Not Found]**\n\nBerdasarkan parameter udang Anda:\n- **Berat**: ${parameters.avg_weight}g\n- **Panjang**: ${parameters.avg_length}cm\n- **Keaktifan**: ${parameters.activity_level} px/s\n\nRekomendasi:\n1. Tingkatkan pemberian pakan berprotein tinggi\n2. Periksa kincir air karena tingkat keaktifan sedikit di bawah batas optimal.`;
 
             // Even in mock mode, stream the response for consistent UX
             const encoder = new TextEncoder();
@@ -265,7 +268,7 @@ export async function POST(req: Request) {
             : (parameters.stocking_date 
                 ? (() => {
                     const lastRecordedAt = metricsHistory.length > 0 
-                        ? new Date(metricsHistory[metricsHistory.length - 1].recorded_at).getTime()
+                        ? parseDateAsLocal(metricsHistory[metricsHistory.length - 1].recorded_at).getTime()
                         : Date.now();
                     return Math.floor((lastRecordedAt - new Date(parameters.stocking_date!).getTime()) / (1000 * 60 * 60 * 24));
                   })()
@@ -278,20 +281,20 @@ export async function POST(req: Request) {
         if (metricsHistory.length > 0) {
             // Latest reading
             const latest = metricsHistory[metricsHistory.length - 1];
-            pertumbuhanDataSection += `**Data Pertumbuhan Udang Terkini (${new Date(latest.recorded_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}):**
+            pertumbuhanDataSection += `**Data Pertumbuhan Udang Terkini (${parseDateAsLocal(latest.recorded_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}):**
 - Rata-rata Berat Udang: ${latest.avg_body_weight_g} gram
 - Rata-rata Panjang Udang: ${latest.avg_body_length_cm} cm
-- Tingkat Keaktifan: ${latest.activity_level_pct}%
+- Tingkat Keaktifan: ${latest.activity_level_pct} px/s
 `;
             if (resolvedDoc !== null && resolvedDoc >= 0) {
                 pertumbuhanDataSection += `- Umur Udang (DOC): ${resolvedDoc} hari\n`;
             }
             pertumbuhanDataSection += `\n**Riwayat Seluruh Data Pertumbuhan Device (${metricsHistory.length} data, diurutkan dari terlama ke terbaru):**
-| No | Waktu Pencatatan | Berat (g) | Panjang (cm) | Keaktifan (%) |
+| No | Waktu Pencatatan | Berat (g) | Panjang (cm) | Keaktifan (px/s) |
 |----|-----------------|-----------|-------------|--------------|
 `;
             metricsHistory.forEach((m, i) => {
-                const date = new Date(m.recorded_at).toLocaleString("id-ID", {
+                const date = parseDateAsLocal(m.recorded_at).toLocaleString("id-ID", {
                     dateStyle: "short",
                     timeStyle: "short",
                 });
@@ -302,7 +305,7 @@ export async function POST(req: Request) {
             pertumbuhanDataSection = `**Data Pertumbuhan Udang Saat Ini:**
 - Rata-rata Berat Udang: ${parameters.avg_weight} gram
 - Rata-rata Panjang Udang: ${parameters.avg_length} cm
-- Tingkat Keaktifan: ${parameters.activity_level}%`;
+- Tingkat Keaktifan: ${parameters.activity_level} px/s`;
             if (resolvedDoc !== null && resolvedDoc >= 0) {
                 pertumbuhanDataSection += `\n- Umur Udang (DOC): ${resolvedDoc} hari`;
             }
@@ -329,31 +332,33 @@ ${ragContext}
 
 **Aturan Penjawab:**
 1. Gunakan bahasa Indonesia yang profesional namun ramah dan mudah dipahami oleh petambak.
-2. Selalu kaitkan jawaban Anda dengan data Pertumbuhan saat ini dan Rekomendasi Berbasis Aturan SOP jika relevan. Rekomendasi Berbasis Aturan SOP adalah hasil evaluasi sistem aturan baku terhadap DOC, berat, panjang, dan aktivitas udang saat ini. Gunakan itu sebagai acuan dasar analisis Anda, lalu kembangkan analisanya dengan penjelasan ilmiah yang mudah dipahami atau referensi dokumen pengetahuan yang relevan.
-3. Jika ada referensi dokumen pengetahuan yang relevan, gunakan informasi tersebut untuk memperkuat jawaban Anda. Sebutkan bahwa rekomendasi didasarkan pada dokumen/SOP yang ada.
-4. Berikan rekomendasi yang praktis dan actionable (bisa langsung diterapkan).
-5. Gunakan format Markdown (seperti bullet points, bold text, atau tabel jika perlu membandingkan nilai) agar mudah dibaca.
-6. Jika ditanya di luar konteks budidaya udang atau perikanan, tolak dengan sopan dan kembalikan topik ke akuakultur.`;
+2. **Jawab langsung dan to-the-point sesuai apa yang ditanyakan.** Jangan menambahkan informasi yang tidak diminta. Jika pertanyaan bersifat pengetahuan umum (misal "apa itu pakan alami?"), jawab pertanyaan itu secara ringkas tanpa mengaitkan ke data kolam saat ini.
+3. Kaitkan jawaban dengan data Pertumbuhan dan Rekomendasi SOP **hanya jika pertanyaan user secara spesifik membahas kondisi kolam mereka** (misal "bagaimana kondisi udang saya?", "apakah pertumbuhan udang saya normal?").
+4. Jika ada referensi dokumen pengetahuan yang relevan, gunakan untuk memperkuat jawaban. Cukup sebutkan singkat sumbernya.
+5. Berikan rekomendasi yang praktis dan actionable.
+6. Gunakan format Markdown (bullet points, bold, tabel) agar mudah dibaca. Usahakan jawaban ringkas, tidak lebih dari 2-3 paragraf kecuali memang pertanyaannya kompleks.
+7. Jika ditanya di luar konteks budidaya udang atau perikanan, tolak dengan sopan dan kembalikan topik ke akuakultur.`;
 
-        // Initialize Gemini model with dynamic system instruction
-        const chatModel = genAI.getGenerativeModel({
-            model: "gemini-3-flash-preview",
-            systemInstruction: systemPrompt,
+        // ─── Initialize LangChain ChatOpenRouter ─────────────────
+        const model = new ChatOpenRouter({
+            model: process.env.OPENROUTER_MODEL || "tencent/hy3:free",
+            apiKey: process.env.OPENROUTER_API_KEY,
+            temperature: 0,
         });
 
-        // Map previous messages to Gemini Chat history format
-        const chatHistory = messages.slice(0, historyLength - 1).map(msg => ({
-            role: msg.role === "assistant" ? "model" : "user",
-            parts: [{ text: msg.content }],
-        }));
+        // Build LangChain message array
+        const langchainMessages = [
+            new SystemMessage(systemPrompt),
+            ...messages.slice(0, historyLength - 1).map((msg) =>
+                msg.role === "assistant"
+                    ? new AIMessage(msg.content)
+                    : new HumanMessage(msg.content)
+            ),
+            new HumanMessage(currentPrompt),
+        ];
 
-        // Start multi-turn chat session
-        const chat = chatModel.startChat({
-            history: chatHistory,
-        });
-
-        // ─── Streaming response using multi-turn sendMessageStream ──
-        const result = await chat.sendMessageStream(currentPrompt);
+        // ─── Streaming response using LangChain .stream() ──────
+        const langchainStream = await model.stream(langchainMessages);
 
         const encoder = new TextEncoder();
         let fullResponseText = "";
@@ -361,8 +366,11 @@ ${ragContext}
         const stream = new ReadableStream({
             async start(controller) {
                 try {
-                    for await (const chunk of result.stream) {
-                        const text = chunk.text();
+                    for await (const chunk of langchainStream) {
+                        const text =
+                            typeof chunk.content === "string"
+                                ? chunk.content
+                                : "";
                         if (text) {
                             fullResponseText += text;
                             controller.enqueue(

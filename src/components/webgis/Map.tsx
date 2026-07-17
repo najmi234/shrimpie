@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { parseDateAsLocal } from "@/lib/utils";
 import {
     MapContainer,
     TileLayer,
@@ -352,7 +353,7 @@ export default function WebGISMap() {
                                             </div>
                                             <div className="text-right flex flex-col items-end">
                                                 <span className="text-[10px] text-muted-foreground">Update Terakhir</span>
-                                                <span className="text-[10px] font-medium text-foreground">{pond.latestMetrics?.recorded_at ? new Date(pond.latestMetrics.recorded_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                                                <span className="text-[10px] font-medium text-foreground">{pond.latestMetrics?.recorded_at ? parseDateAsLocal(pond.latestMetrics.recorded_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                                             </div>
                                         </div>
                                     </button>
@@ -393,7 +394,7 @@ export default function WebGISMap() {
                                             </div>
                                             <div className="text-right flex flex-col items-end">
                                                 <span className="text-[10px] text-muted-foreground">Last Update</span>
-                                                <span className="text-[10px] font-medium text-foreground">{device.last_update_at ? new Date(device.last_update_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                                                <span className="text-[10px] font-medium text-foreground">{device.last_update_at ? parseDateAsLocal(device.last_update_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                                             </div>
                                         </div>
                                     </button>
@@ -457,7 +458,7 @@ export default function WebGISMap() {
                                         </div>
                                         <div className="bg-muted/40 p-2 rounded-lg text-xs">
                                             <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Last Updated</p>
-                                            <p className="font-medium text-foreground">{device.last_update_at ? new Date(device.last_update_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</p>
+                                            <p className="font-medium text-foreground">{device.last_update_at ? parseDateAsLocal(device.last_update_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -539,11 +540,11 @@ export default function WebGISMap() {
                                                 </div>
                                                 <div className="bg-muted/40 p-2 rounded-lg text-xs">
                                                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 flex items-center gap-1"><Activity className="w-3 h-3" /> Aktivitas</p>
-                                                    <p className="font-medium text-foreground">{pond.latestMetrics.activity_level_pct}%</p>
+                                                    <p className="font-medium text-foreground">{pond.latestMetrics.activity_level_pct} px/s</p>
                                                 </div>
                                                 <div className="bg-muted/40 p-2 rounded-lg text-xs">
                                                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Waktu Rekam</p>
-                                                    <p className="font-medium text-foreground">{new Date(pond.latestMetrics.recorded_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                                    <p className="font-medium text-foreground">{parseDateAsLocal(pond.latestMetrics.recorded_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                                                 </div>
                                             </>
                                         ) : (

@@ -1,73 +1,104 @@
 /**
- * Server-side embedding utilities for RAG.
- * Uses Supabase service role or server client for write operations (ingest, API routes).
+ * Server-side RAG utilities using LangChain + OpenRouter.
+ *
+ * - Embeddings: OpenAI text-embedding-3-small via OpenRouter
+ * - Vector DB:  Supabase pgvector via LangChain SupabaseVectorStore
+ * - LLM:        OpenRouter (configured separately in the chat route)
  */
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
 import { createClient } from "@supabase/supabase-js";
+import type { Document } from "@langchain/core/documents";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+// ─── Embeddings (OpenAI via OpenRouter) ──────────────────────────
+let _embeddings: OpenAIEmbeddings | null = null;
 
 /**
- * Generate an embedding vector for the given text using Gemini text-embedding-004.
+ * Get the shared OpenAI embeddings instance (routed through OpenRouter).
+ * Uses text-embedding-3-small with 768 dimensions to match the pgvector column.
  */
-export async function generateEmbedding(text: string): Promise<number[]> {
-    const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-    const result = await model.embedContent({
-        content: { role: "user", parts: [{ text }] },
-        outputDimensionality: 768,
-    } as any);
-    return result.embedding.values;
+export function getEmbeddings(): OpenAIEmbeddings {
+    if (!_embeddings) {
+        _embeddings = new OpenAIEmbeddings({
+            model: "openai/text-embedding-3-small",
+            dimensions: 768,
+            configuration: {
+                baseURL: "https://openrouter.ai/api/v1",
+            },
+            apiKey: process.env.OPENROUTER_API_KEY,
+        });
+    }
+    return _embeddings;
 }
 
-/**
- * Create a Supabase client for server-side use (with service role key if available).
- */
+// ─── Supabase Admin Client ───────────────────────────────────────
 function getSupabaseAdmin() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+    const key =
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
     return createClient(url, key);
 }
 
+// ─── Vector Store ────────────────────────────────────────────────
+let _vectorStore: SupabaseVectorStore | null = null;
+
 /**
- * Search for relevant documents using cosine similarity via pgvector.
+ * Get the shared SupabaseVectorStore instance.
+ */
+export function getVectorStore(): SupabaseVectorStore {
+    if (!_vectorStore) {
+        _vectorStore = new SupabaseVectorStore(getEmbeddings(), {
+            client: getSupabaseAdmin(),
+            tableName: "documents",
+            queryName: "match_documents",
+        });
+    }
+    return _vectorStore;
+}
+
+/**
+ * Search for relevant documents using cosine similarity via LangChain.
+ * Returns documents with their similarity scores.
  */
 export async function searchDocuments(
     query: string,
-    matchCount: number = 5,
-    matchThreshold: number = 0.5
-): Promise<{ id: number; content: string; metadata: Record<string, unknown>; similarity: number }[]> {
-    const embedding = await generateEmbedding(query);
-    const supabase = getSupabaseAdmin();
+    matchCount: number = 5
+): Promise<
+    { content: string; metadata: Record<string, unknown>; similarity: number }[]
+> {
+    const vectorStore = getVectorStore();
 
-    const { data, error } = await supabase.rpc("match_documents", {
-        query_embedding: embedding,
-        match_threshold: matchThreshold,
-        match_count: matchCount,
-    });
+    const results = await vectorStore.similaritySearchWithScore(
+        query,
+        matchCount
+    );
 
-    if (error) {
-        console.error("Error searching documents:", error);
-        return [];
-    }
+    return results.map(([doc, score]) => ({
+        content: doc.pageContent,
+        metadata: doc.metadata ?? {},
+        similarity: score,
+    }));
+}
 
-    return data ?? [];
+/**
+ * Generate an embedding vector for the given text.
+ * Convenience wrapper around the LangChain embeddings instance.
+ */
+export async function generateEmbedding(text: string): Promise<number[]> {
+    const embeddings = getEmbeddings();
+    return embeddings.embedQuery(text);
 }
 
 /**
  * Insert a document chunk with its embedding into Supabase.
+ * Uses the vector store's addDocuments method.
  */
 export async function insertDocumentChunk(
     content: string,
-    embedding: number[],
     metadata: Record<string, unknown> = {}
 ) {
-    const supabase = getSupabaseAdmin();
-    const { error } = await supabase.from("documents").insert({
-        content,
-        embedding,
-        metadata,
-    });
-    if (error) {
-        throw new Error(`Failed to insert document chunk: ${error.message}`);
-    }
+    const vectorStore = getVectorStore();
+    const doc: Document = { pageContent: content, metadata };
+    await vectorStore.addDocuments([doc]);
 }
