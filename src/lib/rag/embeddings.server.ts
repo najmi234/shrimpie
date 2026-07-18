@@ -9,26 +9,23 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
 import { createClient } from "@supabase/supabase-js";
 import type { Document } from "@langchain/core/documents";
+import { getSystemConfig } from "../settings.server";
 
-// ─── Embeddings (OpenAI via OpenRouter) ──────────────────────────
-let _embeddings: OpenAIEmbeddings | null = null;
-
+// ─── Embeddings (OpenAI via OpenRouter / Custom Provider) ────────
 /**
- * Get the shared OpenAI embeddings instance (routed through OpenRouter).
+ * Get the OpenAI embeddings instance (routed through OpenRouter / Custom Provider).
  * Uses text-embedding-3-small with 768 dimensions to match the pgvector column.
  */
-export function getEmbeddings(): OpenAIEmbeddings {
-    if (!_embeddings) {
-        _embeddings = new OpenAIEmbeddings({
-            model: "openai/text-embedding-3-small",
-            dimensions: 768,
-            configuration: {
-                baseURL: "https://openrouter.ai/api/v1",
-            },
-            apiKey: process.env.OPENROUTER_API_KEY,
-        });
-    }
-    return _embeddings;
+export async function getEmbeddings(): Promise<OpenAIEmbeddings> {
+    const config = await getSystemConfig();
+    return new OpenAIEmbeddings({
+        model: config.embeddingModel,
+        dimensions: 768,
+        configuration: {
+            baseURL: config.embeddingProviderUrl,
+        },
+        apiKey: config.embeddingApiKey || undefined,
+    });
 }
 
 // ─── Supabase Admin Client ───────────────────────────────────────
@@ -41,20 +38,16 @@ function getSupabaseAdmin() {
 }
 
 // ─── Vector Store ────────────────────────────────────────────────
-let _vectorStore: SupabaseVectorStore | null = null;
-
 /**
- * Get the shared SupabaseVectorStore instance.
+ * Get the SupabaseVectorStore instance.
  */
-export function getVectorStore(): SupabaseVectorStore {
-    if (!_vectorStore) {
-        _vectorStore = new SupabaseVectorStore(getEmbeddings(), {
-            client: getSupabaseAdmin(),
-            tableName: "documents",
-            queryName: "match_documents",
-        });
-    }
-    return _vectorStore;
+export async function getVectorStore(): Promise<SupabaseVectorStore> {
+    const embeddings = await getEmbeddings();
+    return new SupabaseVectorStore(embeddings, {
+        client: getSupabaseAdmin(),
+        tableName: "documents",
+        queryName: "match_documents",
+    });
 }
 
 /**
@@ -67,7 +60,7 @@ export async function searchDocuments(
 ): Promise<
     { content: string; metadata: Record<string, unknown>; similarity: number }[]
 > {
-    const vectorStore = getVectorStore();
+    const vectorStore = await getVectorStore();
 
     const results = await vectorStore.similaritySearchWithScore(
         query,
@@ -86,7 +79,7 @@ export async function searchDocuments(
  * Convenience wrapper around the LangChain embeddings instance.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-    const embeddings = getEmbeddings();
+    const embeddings = await getEmbeddings();
     return embeddings.embedQuery(text);
 }
 
@@ -98,7 +91,7 @@ export async function insertDocumentChunk(
     content: string,
     metadata: Record<string, unknown> = {}
 ) {
-    const vectorStore = getVectorStore();
+    const vectorStore = await getVectorStore();
     const doc: Document = { pageContent: content, metadata };
     await vectorStore.addDocuments([doc]);
 }

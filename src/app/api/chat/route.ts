@@ -1,4 +1,4 @@
-import { ChatOpenRouter } from "@langchain/openrouter";
+import { ChatOpenAI } from "@langchain/openai";
 import {
     SystemMessage,
     HumanMessage,
@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { chatRateLimiter } from "@/lib/rate-limit";
 import { parseDateAsLocal } from "@/lib/utils";
+import { getSystemConfig } from "@/lib/settings.server";
 
 import { z } from "zod";
 
@@ -199,8 +200,10 @@ export async function POST(req: Request) {
 
         const { messages, parameters, conversationId } = validationResult.data;
 
-        if (!process.env.OPENROUTER_API_KEY) {
-            console.warn("OPENROUTER_API_KEY is not set. Using mock response.");
+        const config = await getSystemConfig();
+
+        if (!config.llmApiKey) {
+            console.warn("API Key is not set in settings or env. Using mock response.");
             const mockText = `**[MOCK MODE: API Key Not Found]**\n\nBerdasarkan parameter udang Anda:\n- **Berat**: ${parameters.avg_weight}g\n- **Panjang**: ${parameters.avg_length}cm\n- **Keaktifan**: ${parameters.activity_level} px/s\n\nRekomendasi:\n1. Tingkatkan pemberian pakan berprotein tinggi\n2. Periksa kincir air karena tingkat keaktifan sedikit di bawah batas optimal.`;
 
             // Even in mock mode, stream the response for consistent UX
@@ -236,9 +239,30 @@ export async function POST(req: Request) {
         const currentPrompt = messages[historyLength - 1].content;
 
         // ─── RAG: Retrieve relevant documents ─────────────────
+        const RAG_SIMILARITY_THRESHOLD = 0.50;
+        const RAG_CANDIDATE_COUNT = 5;
+
         let ragContext = "";
         try {
-            const relevantDocs = await searchDocuments(currentPrompt, 3);
+            const candidates = await searchDocuments(currentPrompt, RAG_CANDIDATE_COUNT);
+
+            console.log(`\n=== 🔍 [RAG RETRIEVAL START] ===`);
+            console.log(`Query: "${currentPrompt}"`);
+            console.log(`Candidates retrieved from DB: ${candidates.length}`);
+            candidates.forEach((c, idx) => {
+                console.log(`  [Candidate ${idx + 1}] Similarity: ${c.similarity.toFixed(4)} | Source: ${c.metadata?.source || "unknown"} | Snippet: "${c.content.slice(0, 80).replace(/\n/g, " ")}..."`);
+            });
+
+            const relevantDocs = candidates.filter(
+                (d) => d.similarity >= RAG_SIMILARITY_THRESHOLD
+            );
+
+            console.log(`Relevant Chunks passing threshold (>= ${RAG_SIMILARITY_THRESHOLD}): ${relevantDocs.length}`);
+            relevantDocs.forEach((c, idx) => {
+                console.log(`  [Selected Chunk ${idx + 1}] Source: ${c.metadata?.source || "unknown"}`);
+            });
+            console.log(`=== [RAG RETRIEVAL END] ===\n`);
+
             if (relevantDocs.length > 0) {
                 ragContext = `\n\n**Referensi dari Dokumen Pengetahuan:**\n${relevantDocs
                     .map(
@@ -263,15 +287,15 @@ export async function POST(req: Request) {
         }> = parameters.metricsHistory ?? [];
 
         let pertumbuhanDataSection = "";
-        const resolvedDoc = parameters.doc !== undefined && parameters.doc !== null 
-            ? parameters.doc 
-            : (parameters.stocking_date 
+        const resolvedDoc = parameters.doc !== undefined && parameters.doc !== null
+            ? parameters.doc
+            : (parameters.stocking_date
                 ? (() => {
-                    const lastRecordedAt = metricsHistory.length > 0 
+                    const lastRecordedAt = metricsHistory.length > 0
                         ? parseDateAsLocal(metricsHistory[metricsHistory.length - 1].recorded_at).getTime()
                         : Date.now();
                     return Math.floor((lastRecordedAt - new Date(parameters.stocking_date!).getTime()) / (1000 * 60 * 60 * 24));
-                  })()
+                })()
                 : null);
 
         if (resolvedDoc !== null && resolvedDoc >= 0) {
@@ -339,10 +363,13 @@ ${ragContext}
 6. Gunakan format Markdown (bullet points, bold, tabel) agar mudah dibaca. Usahakan jawaban ringkas, tidak lebih dari 2-3 paragraf kecuali memang pertanyaannya kompleks.
 7. Jika ditanya di luar konteks budidaya udang atau perikanan, tolak dengan sopan dan kembalikan topik ke akuakultur.`;
 
-        // ─── Initialize LangChain ChatOpenRouter ─────────────────
-        const model = new ChatOpenRouter({
-            model: process.env.OPENROUTER_MODEL || "tencent/hy3:free",
-            apiKey: process.env.OPENROUTER_API_KEY,
+        // ─── Initialize LangChain ChatOpenAI ────────────────────
+        const model = new ChatOpenAI({
+            model: config.llmModel,
+            apiKey: config.llmApiKey,
+            configuration: {
+                baseURL: config.llmProviderUrl,
+            },
             temperature: 0,
         });
 
@@ -380,6 +407,11 @@ ${ragContext}
                             );
                         }
                     }
+
+                    console.log(`\n=== 🤖 [LLM RESPONSE START] ===`);
+                    console.log(`Model: ${config.llmModel}`);
+                    console.log(`Response:\n${fullResponseText}`);
+                    console.log(`=== [LLM RESPONSE END] ===\n`);
 
                     // Save assistant message to database if conversationId provided
                     if (conversationId && fullResponseText) {

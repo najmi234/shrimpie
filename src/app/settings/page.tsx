@@ -17,6 +17,7 @@ import {
     Trash2,
     Plus,
     Shield,
+    Bot,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -85,6 +86,12 @@ export default function SettingsPage() {
             description: t("deviceSettings.description"),
             icon: Cpu,
         },
+        {
+            id: "rag_ai",
+            label: t("aiSettings.label"),
+            description: t("aiSettings.description"),
+            icon: Bot,
+        },
     ]
 
     const [activeCategory, setActiveCategory] = useState<string | null>(null)
@@ -125,6 +132,21 @@ export default function SettingsPage() {
     const [editedDevices, setEditedDevices] = useState<Record<string, Partial<Device>>>({})
     const [deviceSaving, setDeviceSaving] = useState<Record<string, boolean>>({})
     const [deviceSaved, setDeviceSaved] = useState<Record<string, boolean>>({})
+
+    // ----- RAG/AI state -----
+    const [aiSettings, setAiSettings] = useState({
+        llm_api_key: "",
+        llm_model: "",
+        embedding_api_key: "",
+        embedding_model: "",
+        llm_provider_url: "",
+        embedding_provider_url: "",
+    })
+    const [aiLoading, setAiLoading] = useState(false)
+    const [aiSaving, setAiSaving] = useState(false)
+    const [aiSaved, setAiSaved] = useState(false)
+    const [showApiKey, setShowApiKey] = useState(false)
+    const [showEmbeddingApiKey, setShowEmbeddingApiKey] = useState(false)
 
     // ----- Add/Delete state -----
     const [addPondOpen, setAddPondOpen] = useState(false)
@@ -217,6 +239,58 @@ export default function SettingsPage() {
         fetchDevices()
         fetchPondsForDevices()
     }, [activeCategory])
+
+    // ----- Fetch RAG/AI settings -----
+    useEffect(() => {
+        if (activeCategory !== "rag_ai") return
+        async function fetchAiSettings() {
+            setAiLoading(true)
+            const { data, error } = await supabase
+                .from("system_settings")
+                .select("key, value")
+            setAiLoading(false)
+            if (error) {
+                console.error("Failed to fetch system settings:", error)
+                return
+            }
+            const settingsMap = new Map<string, string>()
+            data?.forEach((row) => {
+                settingsMap.set(row.key, row.value)
+            })
+            setAiSettings({
+                llm_api_key: settingsMap.get("llm_api_key") ?? settingsMap.get("openrouter_api_key") ?? "",
+                llm_model: settingsMap.get("llm_model") ?? settingsMap.get("openrouter_model") ?? "tencent/hy3:free",
+                embedding_api_key: settingsMap.get("embedding_api_key") ?? "",
+                embedding_model: settingsMap.get("embedding_model") ?? "openai/text-embedding-3-small",
+                llm_provider_url: settingsMap.get("llm_provider_url") ?? settingsMap.get("provider_url") ?? "https://openrouter.ai/api/v1",
+                embedding_provider_url: settingsMap.get("embedding_provider_url") ?? "https://openrouter.ai/api/v1",
+            })
+        }
+        fetchAiSettings()
+    }, [activeCategory])
+
+    const handleSaveAiSettings = async () => {
+        setAiSaving(true)
+        const keysToSave = Object.entries(aiSettings)
+        const upsertData = keysToSave.map(([key, value]) => ({
+            key,
+            value,
+            updated_at: new Date().toISOString()
+        }))
+
+        const { error } = await supabase
+            .from("system_settings")
+            .upsert(upsertData, { onConflict: "key" })
+
+        setAiSaving(false)
+        if (error) {
+            console.error("Failed to save AI settings:", error)
+            return
+        }
+
+        setAiSaved(true)
+        setTimeout(() => setAiSaved(false), 2000)
+    }
 
     // ----- Pond handlers -----
     const handlePondFieldChange = (pondId: string, field: keyof Pond, value: string) => {
@@ -734,7 +808,7 @@ export default function SettingsPage() {
                                                             {(item) => (
                                                                 <ComboboxItem key={item} value={item}>
                                                                     {item}
-                                                                 </ComboboxItem>
+                                                                </ComboboxItem>
                                                             )}
                                                         </ComboboxList>
                                                     </ComboboxContent>
@@ -786,6 +860,168 @@ export default function SettingsPage() {
                         </motion.div>
                     )
                 })
+            )}
+        </motion.div>
+    )
+
+    // ----- Render: RAG/AI settings -----
+    const renderAiSettings = () => (
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+        >
+            {aiLoading ? (
+                <div className="flex justify-center p-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+            ) : (
+                <Card className="rounded-2xl py-0 border-border shadow-sm">
+                    <CardContent className="p-6 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2">
+                                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                                    {t("aiSettings.apiKey")}
+                                </label>
+                                <div className="relative">
+                                    <Input
+                                        type={showApiKey ? "text" : "password"}
+                                        value={aiSettings.llm_api_key}
+                                        onChange={(e) =>
+                                            setAiSettings((prev) => ({
+                                                ...prev,
+                                                llm_api_key: e.target.value,
+                                            }))
+                                        }
+                                        className="h-9 text-sm pr-10"
+                                        placeholder="..."
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowApiKey(!showApiKey)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-medium"
+                                    >
+                                        {showApiKey ? tCommon("hide") || "Sembunyikan" : tCommon("show") || "Tampilkan"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                                    {t("aiSettings.embeddingApiKey")}
+                                </label>
+                                <div className="relative">
+                                    <Input
+                                        type={showEmbeddingApiKey ? "text" : "password"}
+                                        value={aiSettings.embedding_api_key}
+                                        onChange={(e) =>
+                                            setAiSettings((prev) => ({
+                                                ...prev,
+                                                embedding_api_key: e.target.value,
+                                            }))
+                                        }
+                                        className="h-9 text-sm pr-10"
+                                        placeholder="..."
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowEmbeddingApiKey(!showEmbeddingApiKey)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-medium"
+                                    >
+                                        {showEmbeddingApiKey ? tCommon("hide") || "Sembunyikan" : tCommon("show") || "Tampilkan"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                                    {t("aiSettings.llmModel")}
+                                </label>
+                                <Input
+                                    value={aiSettings.llm_model}
+                                    onChange={(e) =>
+                                        setAiSettings((prev) => ({
+                                            ...prev,
+                                            llm_model: e.target.value,
+                                        }))
+                                    }
+                                    className="h-9 text-sm"
+                                    placeholder="tencent/hy3:free"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                                    {t("aiSettings.embeddingModel")}
+                                </label>
+                                <Input
+                                    value={aiSettings.embedding_model}
+                                    onChange={(e) =>
+                                        setAiSettings((prev) => ({
+                                            ...prev,
+                                            embedding_model: e.target.value,
+                                        }))
+                                    }
+                                    className="h-9 text-sm"
+                                    placeholder="openai/text-embedding-3-small"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                                    {t("aiSettings.llmProviderUrl")}
+                                </label>
+                                <Input
+                                    value={aiSettings.llm_provider_url}
+                                    onChange={(e) =>
+                                        setAiSettings((prev) => ({
+                                            ...prev,
+                                            llm_provider_url: e.target.value,
+                                        }))
+                                    }
+                                    className="h-9 text-sm"
+                                    placeholder="https://openrouter.ai/api/v1"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                                    {t("aiSettings.embeddingProviderUrl")}
+                                </label>
+                                <Input
+                                    value={aiSettings.embedding_provider_url}
+                                    onChange={(e) =>
+                                        setAiSettings((prev) => ({
+                                            ...prev,
+                                            embedding_provider_url: e.target.value,
+                                        }))
+                                    }
+                                    className="h-9 text-sm"
+                                    placeholder="https://openrouter.ai/api/v1"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-2 border-t">
+                            <Button
+                                disabled={aiSaving}
+                                onClick={handleSaveAiSettings}
+                                className="h-9 gap-2 min-w-[120px]"
+                                variant={aiSaved ? "outline" : "default"}
+                            >
+                                {aiSaving ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : aiSaved ? (
+                                    <Check className="w-4 h-4 text-green-500" />
+                                ) : (
+                                    <Save className="w-4 h-4" />
+                                )}
+                                {aiSaving ? tCommon("saving") : aiSaved ? tCommon("saved") : tCommon("save")}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
         </motion.div>
     )
@@ -867,6 +1103,7 @@ export default function SettingsPage() {
                 {!activeCategory && renderMenu()}
                 {activeCategory === "pond" && renderPondSettings()}
                 {activeCategory === "device" && renderDeviceSettings()}
+                {activeCategory === "rag_ai" && renderAiSettings()}
             </AnimatePresence>
 
             {/* Delete Confirmation Dialog */}

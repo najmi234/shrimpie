@@ -11,7 +11,9 @@
     "search": "Cari...",
     "noData": "Tidak ada data.",
     "processing": "Memproses…",
-    "back": "Kembali"
+    "back": "Kembali",
+    "show": "Tampilkan",
+    "hide": "Sembunyikan"
   },
   "landing": {
     "nav": {
@@ -301,7 +303,17 @@
     "deleteConfirmTitle": "Konfirmasi Hapus",
     "deleteConfirmDescription": "Yakin ingin menghapus {type} \"{name}\"? Tindakan ini tidak dapat dibatalkan.",
     "deleteTypePond": "kolam",
-    "deleteTypeDevice": "perangkat"
+    "deleteTypeDevice": "perangkat",
+    "aiSettings": {
+      "label": "Pengaturan RAG & AI",
+      "description": "Kelola API Key, model LLM, model Embedding, dan endpoint custom provider",
+      "apiKey": "LLM API Key / API Key Kustom",
+      "embeddingApiKey": "Embedding API Key / API Key Kustom",
+      "llmModel": "Model LLM Text",
+      "embeddingModel": "Model Embedding",
+      "llmProviderUrl": "Custom LLM Provider URL",
+      "embeddingProviderUrl": "Custom Embedding Provider URL"
+    }
   },
   "account": {
     "title": "Profil Saya",

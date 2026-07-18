@@ -18,6 +18,7 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
 import { Document } from "@langchain/core/documents";
 import { PDFParse } from "pdf-parse";
+import { getSystemConfig } from "../src/lib/settings.server";
 
 // ─── Config ───────────────────────────────────────────────
 const CHUNK_SIZE = 1000; // characters per chunk
@@ -36,28 +37,9 @@ if (!supabaseUrl || !supabaseKey) {
     );
     process.exit(1);
 }
-if (!process.env.OPENROUTER_API_KEY) {
-    console.error("❌ Missing OPENROUTER_API_KEY in .env.local");
-    process.exit(1);
-}
 
 // ─── Init clients ─────────────────────────────────────────
 const supabase = createClient(supabaseUrl, supabaseKey);
-
-const embeddings = new OpenAIEmbeddings({
-    model: "openai/text-embedding-3-small",
-    dimensions: 768,
-    configuration: {
-        baseURL: "https://openrouter.ai/api/v1",
-    },
-    apiKey: process.env.OPENROUTER_API_KEY,
-});
-
-const vectorStore = new SupabaseVectorStore(embeddings, {
-    client: supabase,
-    tableName: "documents",
-    queryName: "match_documents",
-});
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -101,6 +83,29 @@ async function readFileContent(filePath: string): Promise<string> {
 // ─── Main ─────────────────────────────────────────────────
 
 async function main() {
+    const config = await getSystemConfig();
+
+    console.log("====================================================");
+    console.log("⚡ SHRIMPIE DOCUMENT INGESTION TOOL");
+    console.log(`Embedding Model: ${config.embeddingModel}`);
+    console.log(`Base URL: ${config.embeddingProviderUrl}`);
+    console.log("====================================================\n");
+
+    const embeddings = new OpenAIEmbeddings({
+        model: config.embeddingModel,
+        dimensions: 768,
+        configuration: {
+            baseURL: config.embeddingProviderUrl,
+        },
+        apiKey: config.embeddingApiKey || undefined,
+    });
+
+    const vectorStore = new SupabaseVectorStore(embeddings, {
+        client: supabase,
+        tableName: "documents",
+        queryName: "match_documents",
+    });
+
     console.log("📂 Reading documents from:", DOCS_DIR);
 
     if (!fs.existsSync(DOCS_DIR)) {

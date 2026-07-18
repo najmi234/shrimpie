@@ -11,7 +11,9 @@
     "search": "Search...",
     "noData": "No data.",
     "processing": "Processing…",
-    "back": "Back"
+    "back": "Back",
+    "show": "Show",
+    "hide": "Hide"
   },
   "landing": {
     "nav": {
@@ -301,7 +303,17 @@
     "deleteConfirmTitle": "Confirm Delete",
     "deleteConfirmDescription": "Are you sure you want to delete {type} \"{name}\"? This action cannot be undone.",
     "deleteTypePond": "pond",
-    "deleteTypeDevice": "device"
+    "deleteTypeDevice": "device",
+    "aiSettings": {
+      "label": "RAG & AI Settings",
+      "description": "Manage API Key, LLM model, Embedding model, and custom provider endpoints",
+      "apiKey": "LLM API Key / Custom API Key",
+      "embeddingApiKey": "Embedding API Key / Custom API Key",
+      "llmModel": "Text LLM Model",
+      "embeddingModel": "Embedding Model",
+      "llmProviderUrl": "Custom LLM Provider URL",
+      "embeddingProviderUrl": "Custom Embedding Provider URL"
+    }
   },
   "account": {
     "title": "My Profile",
