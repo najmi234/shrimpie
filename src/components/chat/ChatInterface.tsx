@@ -38,6 +38,7 @@ interface PondMetric {
 }
 
 export interface PondParameters {
+    pondId?: string;
     avg_weight: number;
     avg_length: number;
     activity_level: number;
@@ -104,14 +105,23 @@ export default function ChatInterface({
     const [isStreaming, setIsStreaming] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
+    const activeSessionConvIdRef = useRef<string | null>(null);
 
     // Load messages from Supabase when conversationId changes
     useEffect(() => {
         if (!conversationId) {
+            activeSessionConvIdRef.current = null;
             // New conversation — show welcome message
             setMessages([buildWelcomeMessage(parameters, t)]);
             return;
         }
+
+        // If conversationId is the one created/active in current session, preserve active UI state
+        if (activeSessionConvIdRef.current === conversationId) {
+            return;
+        }
+
+        activeSessionConvIdRef.current = conversationId;
 
         // Load persisted messages
         let cancelled = false;
@@ -157,8 +167,8 @@ export default function ChatInterface({
 
     // Auto-scroll to bottom of chat
     const scrollToBottom = useCallback(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, []);
+        messagesEndRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
+    }, [isStreaming]);
 
     useEffect(() => {
         scrollToBottom();
@@ -185,8 +195,9 @@ export default function ChatInterface({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     messages: finalPayloadMessages,
-                    parameters: parameters,
                     conversationId: currentActiveConvId,
+                    pondId: parameters.pondId,
+                    parameters: parameters,
                 }),
                 signal: abortController.signal,
             });
@@ -326,6 +337,7 @@ export default function ChatInterface({
             );
             if (conv) {
                 activeConversationId = conv.id;
+                activeSessionConvIdRef.current = conv.id;
                 onConversationCreated(conv.id, title);
             }
         }

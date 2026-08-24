@@ -16,6 +16,7 @@ interface SystemConfig {
     embeddingModel: string;
     llmProviderUrl: string;
     embeddingProviderUrl: string;
+    ragSimilarityThreshold: number;
 }
 
 /**
@@ -29,6 +30,7 @@ export async function getSystemConfig(): Promise<SystemConfig> {
         embeddingModel: "openai/text-embedding-3-small",
         llmProviderUrl: process.env.LLM_PROVIDER_URL || "https://openrouter.ai/api/v1",
         embeddingProviderUrl: "https://openrouter.ai/api/v1",
+        ragSimilarityThreshold: 0.35,
     };
 
     try {
@@ -61,6 +63,11 @@ export async function getSystemConfig(): Promise<SystemConfig> {
 
             const dbEmbedProviderUrl = settingsMap.get("embedding_provider_url");
             if (dbEmbedProviderUrl) config.embeddingProviderUrl = dbEmbedProviderUrl;
+
+            const dbThreshold = settingsMap.get("rag_similarity_threshold");
+            if (dbThreshold && !isNaN(parseFloat(dbThreshold))) {
+                config.ragSimilarityThreshold = parseFloat(dbThreshold);
+            }
         }
     } catch (e) {
         console.warn("Failed to fetch system settings from DB, using fallback env:", e);

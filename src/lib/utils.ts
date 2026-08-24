@@ -6,17 +6,20 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Parse a timestamp string from the database as local time (WIB).
+ * Parse a timestamp string from the database as a Date object.
  *
- * Supabase returns `timestamp without time zone` values with a `+00:00`
- * suffix, which makes `new Date()` treat the already-WIB value as UTC
- * and then adds 7 hours when converting to local time.
- *
- * This helper strips the timezone offset so JavaScript interprets the
- * value as local time, preserving the original hours.
+ * Safely parses ISO 8601 strings with timezone indicators (Z, +00:00, etc.)
+ * as well as plain local date strings without causing double timezone offsets.
  */
 export function parseDateAsLocal(dateStr: string): Date {
-  // Remove trailing timezone offset (+00:00, +07:00, Z, etc.)
+  if (!dateStr) return new Date()
+  // If dateStr has explicit timezone offset or Z suffix, use native Date parsing
+  if (/[Zz]|\d{2}:\d{2}$/.test(dateStr)) {
+    const d = new Date(dateStr)
+    if (!isNaN(d.getTime())) return d
+  }
+  // Remove trailing timezone offset for plain strings
   const cleaned = dateStr.replace(/([+-]\d{2}(:\d{2})?|Z)$/, "")
-  return new Date(cleaned)
+  const parsed = new Date(cleaned)
+  return isNaN(parsed.getTime()) ? new Date(dateStr) : parsed
 }

@@ -60,6 +60,23 @@ interface DailySummary {
     details: MetricRow[]
 }
 
+function parseCoords(loc: string): { lat: number; lng: number } | null {
+    if (!loc) return null
+    const match = loc.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/)
+    if (!match) return null
+
+    const n1 = parseFloat(match[1])
+    const n2 = parseFloat(match[2])
+    if (isNaN(n1) || isNaN(n2)) return null
+
+    if (Math.abs(n1) > 30 && Math.abs(n2) <= 30) {
+        return { lat: n2, lng: n1 }
+    } else if (Math.abs(n2) > 30 && Math.abs(n1) <= 30) {
+        return { lat: n1, lng: n2 }
+    }
+    return { lat: n1, lng: n2 }
+}
+
 // ---------- component ----------
 
 function RiwayatPageContent() {
@@ -492,10 +509,9 @@ function RiwayatPageContent() {
                                                         {summary.details[0]?.location ? (
                                                             <button
                                                                 onClick={() => {
-                                                                    const loc = summary.details[0].location!;
-                                                                    const match = loc.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
-                                                                    if (match) {
-                                                                        router.push(`/webgis?highlight_lat=${match[2]}&highlight_lng=${match[1]}`);
+                                                                    const coords = parseCoords(summary.details[0].location!);
+                                                                    if (coords) {
+                                                                        router.push(`/webgis?highlight_lat=${coords.lat}&highlight_lng=${coords.lng}`);
                                                                     }
                                                                 }}
                                                                 className="inline-flex items-center justify-center w-7 h-7 rounded-md text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
@@ -546,10 +562,9 @@ function RiwayatPageContent() {
                                                             {detail.location ? (
                                                                 <button
                                                                     onClick={() => {
-                                                                        const loc = detail.location!;
-                                                                        const match = loc.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
-                                                                        if (match) {
-                                                                            router.push(`/webgis?highlight_lat=${match[2]}&highlight_lng=${match[1]}`);
+                                                                        const coords = parseCoords(detail.location!);
+                                                                        if (coords) {
+                                                                            router.push(`/webgis?highlight_lat=${coords.lat}&highlight_lng=${coords.lng}`);
                                                                         }
                                                                     }}
                                                                     className="inline-flex items-center justify-center w-6 h-6 rounded-md text-emerald-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"

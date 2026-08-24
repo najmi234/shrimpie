@@ -82,16 +82,39 @@ const createPondIcon = () => {
 function parseLocation(locationData: any): [number, number] | null {
     if (!locationData) return null;
 
+    let num1: number | null = null;
+    let num2: number | null = null;
+
     try {
         const parsed = JSON.parse(locationData);
         if (Array.isArray(parsed) && parsed.length >= 2) {
-            return [Number(parsed[1]), Number(parsed[0])]; // FIX (swap!)
+            num1 = Number(parsed[0]);
+            num2 = Number(parsed[1]);
         }
     } catch { }
 
-    const match = locationData.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
-    if (match) {
-        return [Number(match[2]), Number(match[1])]; // tetap swap
+    if (num1 === null || num2 === null || isNaN(num1) || isNaN(num2)) {
+        const match = String(locationData).match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+        if (match) {
+            num1 = Number(match[1]);
+            num2 = Number(match[2]);
+        }
+    }
+
+    if (num1 === null || num2 === null || isNaN(num1) || isNaN(num2)) return null;
+
+    // Detect which number is Latitude (-90 to +90) and Longitude (90 to 145 for Indonesia)
+    if (Math.abs(num1) > 30 && Math.abs(num2) <= 30) {
+        // num1 is Longitude, num2 is Latitude -> Leaflet expects [lat, lng]
+        return [num2, num1];
+    } else if (Math.abs(num2) > 30 && Math.abs(num1) <= 30) {
+        // num1 is Latitude, num2 is Longitude -> Leaflet expects [lat, lng]
+        return [num1, num2];
+    }
+
+    // Default fallback: if num1 <= 90 and num2 <= 90, assume [lat, lng] if num1 is valid lat
+    if (Math.abs(num1) <= 90 && Math.abs(num2) <= 180) {
+        return [num1, num2];
     }
 
     return null;

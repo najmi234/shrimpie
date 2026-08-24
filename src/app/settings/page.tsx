@@ -18,6 +18,15 @@ import {
     Plus,
     Shield,
     Bot,
+    BookOpen,
+    UploadCloud,
+    FileText,
+    Layers,
+    AlertCircle,
+    CheckCircle2,
+    RefreshCw,
+    Search,
+    Sliders,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -58,6 +67,17 @@ interface Device {
     pond_id: string | null
 }
 
+interface KnowledgeDocument {
+    id: string
+    filename: string
+    source: string
+    version: number
+    chunk_count: number
+    embedding_model: string
+    created_at: string
+    status: string
+}
+
 // ---------- settings menu ----------
 
 interface SettingsCategory {
@@ -91,6 +111,12 @@ export default function SettingsPage() {
             label: t("aiSettings.label"),
             description: t("aiSettings.description"),
             icon: Bot,
+        },
+        {
+            id: "knowledge_base",
+            label: "Knowledge Base & Dokumen SOP",
+            description: "Upload dokumen PDF/MD/TXT dan inspeksi status chunking vector database.",
+            icon: BookOpen,
         },
     ]
 
@@ -141,12 +167,31 @@ export default function SettingsPage() {
         embedding_model: "",
         llm_provider_url: "",
         embedding_provider_url: "",
+        rag_similarity_threshold: "0.35",
     })
     const [aiLoading, setAiLoading] = useState(false)
     const [aiSaving, setAiSaving] = useState(false)
     const [aiSaved, setAiSaved] = useState(false)
     const [showApiKey, setShowApiKey] = useState(false)
     const [showEmbeddingApiKey, setShowEmbeddingApiKey] = useState(false)
+
+    // ----- Knowledge Base state -----
+    const [kbDocuments, setKbDocuments] = useState<KnowledgeDocument[]>([])
+    const [docSearchQuery, setDocSearchQuery] = useState<string>("")
+    const [docVersionFilter, setDocVersionFilter] = useState<string>("all")
+    const [kbVersions, setKbVersions] = useState<any[]>([])
+    const [selectedKbVersionId, setSelectedKbVersionId] = useState<string>("")
+    const [versionLoading, setVersionLoading] = useState<boolean>(false)
+    const [kbVersion, setKbVersion] = useState<number>(1)
+    const [kbTotalChunks, setKbTotalChunks] = useState<number>(0)
+    const [kbEmbeddingModel, setKbEmbeddingModel] = useState<string>("openai/text-embedding-3-small")
+    const [kbLoading, setKbLoading] = useState<boolean>(false)
+    const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null)
+    const [uploadStatus, setUploadStatus] = useState<"idle" | "Processing" | "Ready" | "Failed">("idle")
+    const [uploadProgressMsg, setUploadProgressMsg] = useState<string>("")
+    const [uploading, setUploading] = useState<boolean>(false)
+    const [deleteDocTarget, setDeleteDocTarget] = useState<KnowledgeDocument | null>(null)
+    const [deleteDocLoading, setDeleteDocLoading] = useState<boolean>(false)
 
     // ----- Add/Delete state -----
     const [addPondOpen, setAddPondOpen] = useState(false)
@@ -264,10 +309,153 @@ export default function SettingsPage() {
                 embedding_model: settingsMap.get("embedding_model") ?? "openai/text-embedding-3-small",
                 llm_provider_url: settingsMap.get("llm_provider_url") ?? settingsMap.get("provider_url") ?? "https://openrouter.ai/api/v1",
                 embedding_provider_url: settingsMap.get("embedding_provider_url") ?? "https://openrouter.ai/api/v1",
+                rag_similarity_threshold: settingsMap.get("rag_similarity_threshold") ?? "0.35",
             })
         }
         fetchAiSettings()
     }, [activeCategory])
+
+    // ----- Fetch Knowledge Base documents -----
+    const fetchKbDocuments = async () => {
+        setKbLoading(true)
+        try {
+            const res = await fetch("/api/admin/knowledge/list")
+            const data = await res.json()
+            if (data.success) {
+                setKbDocuments(data.documents || [])
+                setKbVersion(data.activeVersion || 1)
+                setKbTotalChunks(data.totalChunks || 0)
+                setKbEmbeddingModel(data.embeddingModel || "openai/text-embedding-3-small")
+            }
+        } catch (err) {
+            console.error("Failed to fetch KB documents:", err)
+        } finally {
+            setKbLoading(false)
+        }
+    }
+
+    // ----- Fetch KB Versions -----
+    const fetchKbVersions = async () => {
+        try {
+            const res = await fetch("/api/admin/knowledge/version")
+            const data = await res.json()
+            if (data.success && data.versions) {
+                setKbVersions(data.versions)
+                const active = data.versions.find((v: any) => v.status === "ACTIVE")
+                if (active) setSelectedKbVersionId(active.id)
+            }
+        } catch (err) {
+            console.error("Failed to fetch KB versions:", err)
+        }
+    }
+
+    const handleCreateNewVersion = async () => {
+        setVersionLoading(true)
+        try {
+            const res = await fetch("/api/admin/knowledge/version", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "create" }),
+            })
+            const data = await res.json()
+            if (data.success) {
+                await fetchKbVersions()
+                await fetchKbDocuments()
+            }
+        } catch (err) {
+            console.error("Create version error:", err)
+        } finally {
+            setVersionLoading(false)
+        }
+    }
+
+    const handleActivateVersion = async (targetId: string) => {
+        setVersionLoading(true)
+        try {
+            const res = await fetch("/api/admin/knowledge/version", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "activate", kbId: targetId }),
+            })
+            const data = await res.json()
+            if (data.success) {
+                await fetchKbVersions()
+                await fetchKbDocuments()
+            }
+        } catch (err) {
+            console.error("Activate version error:", err)
+        } finally {
+            setVersionLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        if (activeCategory === "knowledge_base") {
+            fetchKbDocuments()
+            fetchKbVersions()
+        }
+    }, [activeCategory])
+
+    // ----- Upload Knowledge File handler -----
+    const handleUploadKnowledgeFile = async () => {
+        if (!selectedUploadFile) return
+        setUploading(true)
+        setUploadStatus("Processing")
+        setUploadProgressMsg("Membaca dokumen, mengekstrak teks, chunking, & generating embeddings...")
+
+        try {
+            const formData = new FormData()
+            formData.append("file", selectedUploadFile)
+
+            const res = await fetch("/api/admin/knowledge/upload", {
+                method: "POST",
+                body: formData,
+            })
+
+            const data = await res.json()
+
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Gagal mengunggah dokumen.")
+            }
+
+            setUploadStatus("Ready")
+            setUploadProgressMsg(`Dokumen "${data.filename}" berhasil diproses (${data.chunkCount} chunks, Knowledge Base v${data.version}).`)
+            setSelectedUploadFile(null)
+            fetchKbDocuments()
+        } catch (err: any) {
+            setUploadStatus("Failed")
+            setUploadProgressMsg(err.message || "Gagal mengunggah dokumen.")
+        } finally {
+            setUploading(false)
+        }
+    }
+
+    // ----- Delete Knowledge Document handler -----
+    const handleDeleteKnowledgeDoc = async () => {
+        if (!deleteDocTarget) return
+        setDeleteDocLoading(true)
+        try {
+            const params = new URLSearchParams()
+            if (deleteDocTarget.id) params.set("id", deleteDocTarget.id)
+            if (deleteDocTarget.filename) params.set("filename", deleteDocTarget.filename)
+
+            const res = await fetch(`/api/admin/knowledge/list?${params.toString()}`, {
+                method: "DELETE",
+            })
+            const data = await res.json()
+
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Gagal menghapus dokumen.")
+            }
+
+            setKbDocuments((prev) => prev.filter((d) => d.id !== deleteDocTarget.id && d.filename !== deleteDocTarget.filename))
+            setDeleteDocTarget(null)
+        } catch (err: any) {
+            console.error("Delete doc error:", err)
+        } finally {
+            setDeleteDocLoading(false)
+        }
+    }
 
     const handleSaveAiSettings = async () => {
         setAiSaving(true)
@@ -1001,6 +1189,36 @@ export default function SettingsPage() {
                                     placeholder="https://openrouter.ai/api/v1"
                                 />
                             </div>
+
+                            <div className="md:col-span-2 pt-2 border-t border-border/50 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                        <Sliders className="w-3.5 h-3.5 text-teal-500" />
+                                        Sensitivitas Relevansi RAG (Cutoff Threshold Abstensi):
+                                    </label>
+                                    <span className="font-mono text-xs text-teal-600 dark:text-teal-400 font-bold bg-teal-500/10 px-2 py-0.5 rounded">
+                                        {parseFloat(aiSettings.rag_similarity_threshold || "0.35").toFixed(2)}
+                                    </span>
+                                </div>
+                                <Input
+                                    type="number"
+                                    step="0.05"
+                                    min="0.1"
+                                    max="0.9"
+                                    value={aiSettings.rag_similarity_threshold}
+                                    onChange={(e) =>
+                                        setAiSettings((prev) => ({
+                                            ...prev,
+                                            rag_similarity_threshold: e.target.value,
+                                        }))
+                                    }
+                                    className="h-9 text-sm font-mono"
+                                    placeholder="0.35"
+                                />
+                                <p className="text-[11px] text-muted-foreground">
+                                    Nilai ambang batas similarity (0.1 - 0.9). Jika skor pencarian vektor di bawah angka ini, bot tidak akan mengarang jawaban dan langsung memberitahu bahwa informasi tidak ditemukan.
+                                </p>
+                            </div>
                         </div>
 
                         <div className="flex justify-end pt-2 border-t">
@@ -1023,6 +1241,306 @@ export default function SettingsPage() {
                     </CardContent>
                 </Card>
             )}
+        </motion.div>
+    )
+
+    // ----- Render: Knowledge Base settings -----
+    const renderKnowledgeSettings = () => (
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+        >
+            {/* Header Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card className="rounded-2xl py-0 border-border shadow-sm">
+                    <CardContent className="p-5 flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0">
+                            <Layers className="w-5 h-5 text-teal-500" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-foreground">v{kbVersion}</p>
+                            <p className="text-xs text-muted-foreground">KB Version Aktif</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-2xl py-0 border-border shadow-sm">
+                    <CardContent className="p-5 flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5 text-indigo-500" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-foreground">{kbDocuments.length}</p>
+                            <p className="text-xs text-muted-foreground">Total Dokumen SOP</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-2xl py-0 border-border shadow-sm">
+                    <CardContent className="p-5 flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                            <Bot className="w-5 h-5 text-amber-500" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-foreground">{kbTotalChunks}</p>
+                            <p className="text-xs text-muted-foreground">Total Chunks Vektor</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Document Upload Box */}
+            <Card className="rounded-2xl py-0 border-border shadow-sm">
+                <CardContent className="p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <UploadCloud className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-foreground text-sm">Upload Dokumen Pengetahuan Baru</h3>
+                            <p className="text-xs text-muted-foreground">Dukungan file PDF, Markdown (.md), atau Teks (.txt) hingga 20MB</p>
+                        </div>
+                    </div>
+
+                    <div className="border-2 border-dashed border-border/80 hover:border-primary/50 transition-colors rounded-2xl p-6 text-center space-y-3 bg-muted/20">
+                        <input
+                            type="file"
+                            id="kb-file-input"
+                            accept=".pdf,.md,.txt"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                    setSelectedUploadFile(file)
+                                    setUploadStatus("idle")
+                                    setUploadProgressMsg("")
+                                }
+                            }}
+                        />
+                        <label
+                            htmlFor="kb-file-input"
+                            className="cursor-pointer flex flex-col items-center gap-2"
+                        >
+                            <FileText className="w-8 h-8 text-muted-foreground" />
+                            <span className="text-xs font-medium text-primary hover:underline">
+                                {selectedUploadFile ? selectedUploadFile.name : "Klik untuk memilih file PDF / MD / TXT"}
+                            </span>
+                            {selectedUploadFile && (
+                                <span className="text-[11px] text-muted-foreground">
+                                    {(selectedUploadFile.size / (1024 * 1024)).toFixed(2)} MB
+                                </span>
+                            )}
+                        </label>
+                    </div>
+
+                    {uploadStatus !== "idle" && (
+                        <div className={`p-3.5 rounded-xl border text-xs flex items-center gap-3 ${uploadStatus === "Processing"
+                                ? "bg-amber-500/10 border-amber-500/30 text-amber-600"
+                                : uploadStatus === "Ready"
+                                    ? "bg-green-500/10 border-green-500/30 text-green-600"
+                                    : "bg-red-500/10 border-red-500/30 text-red-600"
+                            }`}>
+                            {uploadStatus === "Processing" && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                            {uploadStatus === "Ready" && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                            {uploadStatus === "Failed" && <AlertCircle className="w-4 h-4 shrink-0" />}
+                            <div className="flex-1">
+                                <span className="font-semibold uppercase tracking-wider text-[10px] block">
+                                    Status: {uploadStatus}
+                                </span>
+                                <span>{uploadProgressMsg}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end">
+                        <Button
+                            onClick={handleUploadKnowledgeFile}
+                            disabled={!selectedUploadFile || uploading}
+                            className="h-9 gap-2 text-xs rounded-xl"
+                        >
+                            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                            {uploading ? "Memproses Embedding..." : "Proses & Ingest Dokumen"}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* KB Version Management Bar */}
+            <Card className="rounded-2xl py-0 border-border shadow-sm">
+                <CardContent className="p-6 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0">
+                                <Layers className="w-5 h-5 text-teal-500" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-foreground text-sm">Manajemen Versi Knowledge Base</h3>
+                                <p className="text-xs text-muted-foreground">Pilih versi KB yang aktif untuk melayani pencarian RAG atau buat versi baru</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={handleCreateNewVersion}
+                                disabled={versionLoading}
+                                variant="outline"
+                                className="h-9 gap-1.5 text-xs rounded-xl"
+                            >
+                                {versionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                Buat Versi KB Baru (v{(kbVersions[0]?.version || kbVersion) + 1})
+                            </Button>
+                        </div>
+                    </div>
+
+                    {kbVersions.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border/50">
+                            <span className="text-xs font-medium text-muted-foreground">Pilih Versi:</span>
+                            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                                <select
+                                    value={selectedKbVersionId}
+                                    onChange={(e) => setSelectedKbVersionId(e.target.value)}
+                                    className="h-9 text-xs rounded-xl bg-background border border-border px-3 font-mono flex-1"
+                                >
+                                    {kbVersions.map((v) => (
+                                        <option key={v.id} value={v.id}>
+                                            v{v.version} — [{v.status}] ({v.embedding_model})
+                                        </option>
+                                    ))}
+                                </select>
+                                <Button
+                                    onClick={() => handleActivateVersion(selectedKbVersionId)}
+                                    disabled={versionLoading || !selectedKbVersionId}
+                                    size="sm"
+                                    className="h-9 text-xs rounded-xl"
+                                >
+                                    {versionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                    Aktifkan Versi
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Document Management Inspector Table */}
+            <Card className="rounded-2xl py-0 border-border shadow-sm overflow-hidden">
+                <CardContent className="p-6 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <BookOpen className="w-4 h-4 text-primary" />
+                            <h3 className="font-semibold text-foreground text-sm">Document Management Inspector</h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1 sm:w-64">
+                                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={docSearchQuery}
+                                    onChange={(e) => setDocSearchQuery(e.target.value)}
+                                    placeholder="Cari nama dokumen SOP..."
+                                    className="h-8 text-xs pl-8 pr-3 rounded-xl"
+                                />
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={fetchKbDocuments}
+                                disabled={kbLoading}
+                                className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground shrink-0"
+                            >
+                                <RefreshCw className={`w-3.5 h-3.5 ${kbLoading ? "animate-spin" : ""}`} />
+                                Refresh
+                            </Button>
+                        </div>
+                    </div>
+
+                    {kbLoading ? (
+                        <div className="flex justify-center p-8">
+                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : kbDocuments.length === 0 ? (
+                        <div className="text-center py-8 text-xs text-muted-foreground">
+                            Belum ada dokumen SOP yang di-ingest. Silakan upload file pertama di atas.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto border border-border/60 rounded-xl">
+                            <table className="w-full text-xs text-left">
+                                <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border/60">
+                                    <tr>
+                                        <th className="px-4 py-3">Filename / Source</th>
+                                        <th className="px-3 py-3">Version</th>
+                                        <th className="px-3 py-3">Chunks</th>
+                                        <th className="px-3 py-3">Embedding Model</th>
+                                        <th className="px-3 py-3">Ingestion Date</th>
+                                        <th className="px-3 py-3">Status</th>
+                                        <th className="px-3 py-3 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/40">
+                                    {kbDocuments
+                                        .filter((d) => !docSearchQuery.trim() || d.filename.toLowerCase().includes(docSearchQuery.toLowerCase()))
+                                        .map((doc) => (
+                                            <tr key={doc.id} className="hover:bg-muted/30 transition-colors">
+                                                <td className="px-4 py-3 font-medium text-foreground">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileText className="w-4 h-4 text-teal-500 shrink-0" />
+                                                        <span className="truncate max-w-[180px]" title={doc.filename}>{doc.filename}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-3 py-3 font-mono">v{doc.version}</td>
+                                                <td className="px-3 py-3 font-semibold text-primary">{doc.chunk_count}</td>
+                                                <td className="px-3 py-3 font-mono text-[11px] text-muted-foreground">{doc.embedding_model}</td>
+                                                <td className="px-3 py-3 text-muted-foreground">
+                                                    {doc.created_at ? new Date(doc.created_at).toLocaleDateString("id-ID", {
+                                                        day: "2-digit",
+                                                        month: "short",
+                                                        year: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    }) : "-"}
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <span className="inline-flex items-center gap-1 bg-green-500/10 text-green-600 border border-green-500/30 px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                                                        <CheckCircle2 className="w-3 h-3" /> Ready
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-3 text-right">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-7 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive text-xs"
+                                                        onClick={() => setDeleteDocTarget(doc)}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Delete Document Confirmation Dialog */}
+            <Dialog open={!!deleteDocTarget} onOpenChange={(open) => { if (!open) setDeleteDocTarget(null) }}>
+                <DialogContent className="rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Hapus Dokumen Knowledge Base?</DialogTitle>
+                        <DialogDescription>
+                            Apakah Anda yakin ingin menghapus dokumen <strong className="text-foreground">{deleteDocTarget?.filename}</strong>? Seluruh chunk embedding dokumen ini akan dihapus dari vector database.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteDocTarget(null)} disabled={deleteDocLoading}>
+                            Batal
+                        </Button>
+                        <Button variant="destructive" onClick={handleDeleteKnowledgeDoc} disabled={deleteDocLoading} className="gap-2">
+                            {deleteDocLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            Hapus Dokumen
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </motion.div>
     )
 
@@ -1104,6 +1622,7 @@ export default function SettingsPage() {
                 {activeCategory === "pond" && renderPondSettings()}
                 {activeCategory === "device" && renderDeviceSettings()}
                 {activeCategory === "rag_ai" && renderAiSettings()}
+                {activeCategory === "knowledge_base" && renderKnowledgeSettings()}
             </AnimatePresence>
 
             {/* Delete Confirmation Dialog */}

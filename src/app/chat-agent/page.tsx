@@ -202,6 +202,7 @@ function ChatAgentContent() {
 
     // Build parameters from latest metric
     const pondParameters = {
+        pondId: selectedPondId || undefined,
         avg_weight: latestMetric?.avg_body_weight_g ?? 0,
         avg_length: latestMetric?.avg_body_length_cm ?? 0,
         activity_level: latestMetric?.activity_level_pct ?? 0,
@@ -251,6 +252,7 @@ function ChatAgentContent() {
     }
 
     const formatConversationDate = (dateStr: string) => {
+        if (!dateStr) return t("justNow")
         const date = parseDateAsLocal(dateStr)
         const now = new Date()
         const diffMs = now.getTime() - date.getTime()
@@ -258,7 +260,7 @@ function ChatAgentContent() {
         const diffHours = Math.floor(diffMs / 3600000)
         const diffDays = Math.floor(diffMs / 86400000)
 
-        if (diffMins < 1) return t("justNow")
+        if (diffMs < 0 || diffMins < 1) return t("justNow")
         if (diffMins < 60) return t("minutesAgo", { count: diffMins })
         if (diffHours < 24) return t("hoursAgo", { count: diffHours })
         if (diffDays < 7) return t("daysAgo", { count: diffDays })
