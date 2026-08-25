@@ -331,6 +331,7 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
   const t = useTranslations("landing")
   const tCommon = useTranslations("common")
+  const tSidebar = useTranslations("sidebar")
   const { locale, toggleLocale } = useLocale()
 
   const features = [
@@ -1013,7 +1014,7 @@ export default function LandingPage() {
               <h4 className="font-semibold text-foreground mb-4">{t("footer.product")}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link href="/dashboard" className="hover:text-foreground transition-colors">{t("nav.features")}</Link></li>
-                <li><Link href="/riwayat" className="hover:text-foreground transition-colors">{t("sidebar.riwayat")}</Link></li>
+                <li><Link href="/riwayat" className="hover:text-foreground transition-colors">{tSidebar("riwayat")}</Link></li>
                 <li><a href="#webgis" className="hover:text-foreground transition-colors">WebGIS</a></li>
               </ul>
             </div>

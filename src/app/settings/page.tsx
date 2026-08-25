@@ -27,6 +27,9 @@ import {
     RefreshCw,
     Search,
     Sliders,
+    RotateCcw,
+    Activity,
+    Zap,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -174,6 +177,40 @@ export default function SettingsPage() {
     const [aiSaved, setAiSaved] = useState(false)
     const [showApiKey, setShowApiKey] = useState(false)
     const [showEmbeddingApiKey, setShowEmbeddingApiKey] = useState(false)
+    const [activeTestingType, setActiveTestingType] = useState<"llm" | "embedding" | "all" | null>(null)
+    const [testResults, setTestResults] = useState<{
+        llm?: { success: boolean; latencyMs?: number; responseText?: string; error?: string; model?: string }
+        embedding?: { success: boolean; latencyMs?: number; dimension?: number; error?: string; model?: string }
+    } | null>(null)
+
+    const handleTestModelConnection = async (testType: "llm" | "embedding" | "all" = "all") => {
+        setActiveTestingType(testType)
+        setTestResults(null)
+        try {
+            const res = await fetch("/api/admin/settings/test-model", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    testType,
+                    llm_api_key: aiSettings.llm_api_key,
+                    llm_model: aiSettings.llm_model,
+                    llm_provider_url: aiSettings.llm_provider_url,
+                    embedding_api_key: aiSettings.embedding_api_key,
+                    embedding_model: aiSettings.embedding_model,
+                    embedding_provider_url: aiSettings.embedding_provider_url,
+                }),
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Gagal menguji koneksi model.")
+            }
+            setTestResults(data.results)
+        } catch (err: any) {
+            alert(err.message || "Gagal menguji koneksi model AI.")
+        } finally {
+            setActiveTestingType(null)
+        }
+    }
 
     // ----- Knowledge Base state -----
     const [kbDocuments, setKbDocuments] = useState<KnowledgeDocument[]>([])
@@ -192,6 +229,30 @@ export default function SettingsPage() {
     const [uploading, setUploading] = useState<boolean>(false)
     const [deleteDocTarget, setDeleteDocTarget] = useState<KnowledgeDocument | null>(null)
     const [deleteDocLoading, setDeleteDocLoading] = useState<boolean>(false)
+    const [deleteKbTarget, setDeleteKbTarget] = useState<any | null>(null)
+    const [deleteKbLoading, setDeleteKbLoading] = useState<boolean>(false)
+    const [activateKbTarget, setActivateKbTarget] = useState<any | null>(null)
+
+    const handleDeleteVersion = async (targetId: string) => {
+        if (!targetId) return
+        setDeleteKbLoading(true)
+        try {
+            const res = await fetch(`/api/admin/knowledge/version?kbId=${targetId}`, {
+                method: "DELETE",
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Gagal menghapus versi Knowledge Base.")
+            }
+            setDeleteKbTarget(null)
+            await fetchKbVersions()
+            await fetchKbDocuments()
+        } catch (err: any) {
+            alert(err.message || "Gagal menghapus versi KB.")
+        } finally {
+            setDeleteKbLoading(false)
+        }
+    }
 
     // ----- Add/Delete state -----
     const [addPondOpen, setAddPondOpen] = useState(false)
@@ -1221,6 +1282,133 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
+                        {/* ----- Section: Test Model Connectivity ----- */}
+                        <div className="pt-3 border-t border-border/50 space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div>
+                                    <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                        <Activity className="w-3.5 h-3.5 text-blue-500" />
+                                        Pengujian Koneksi Model AI (Diagnostics)
+                                    </h4>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Uji apakah konfigurasi API Key dan Model AI berhasil terhubung ke provider secara real-time.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={activeTestingType !== null}
+                                        onClick={() => handleTestModelConnection("llm")}
+                                        className="h-8 text-xs px-2.5 gap-1.5"
+                                    >
+                                        {activeTestingType === "llm" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3 text-indigo-500" />}
+                                        Tes LLM
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={activeTestingType !== null}
+                                        onClick={() => handleTestModelConnection("embedding")}
+                                        className="h-8 text-xs px-2.5 gap-1.5"
+                                    >
+                                        {activeTestingType === "embedding" ? <Loader2 className="w-3 h-3 animate-spin text-green-500" /> : <Layers className="w-3 h-3 text-green-500" />}
+                                        Tes Embedding
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="secondary"
+                                        disabled={activeTestingType !== null}
+                                        onClick={() => handleTestModelConnection("all")}
+                                        className="h-8 text-xs px-3 gap-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-semibold"
+                                    >
+                                        {activeTestingType === "all" ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" /> : <Zap className="w-3.5 h-3.5 text-blue-500" />}
+                                        Uji Semua Model
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Test Results Display */}
+                            {testResults && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                                    {/* LLM Test Result */}
+                                    {testResults.llm && (
+                                        <div
+                                            className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+                                                testResults.llm.success
+                                                    ? "bg-green-500/5 border-green-500/30 text-green-700 dark:text-green-300"
+                                                    : "bg-destructive/5 border-destructive/30 text-destructive dark:text-red-400"
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between font-semibold">
+                                                <span className="flex items-center gap-1.5">
+                                                    {testResults.llm.success ? (
+                                                        <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                                                    ) : (
+                                                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                                    )}
+                                                    LLM ({testResults.llm.model})
+                                                </span>
+                                                {testResults.llm.latencyMs !== undefined && (
+                                                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-background/50 border border-border/40 text-muted-foreground">
+                                                        ⚡ {testResults.llm.latencyMs}ms
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {testResults.llm.success ? (
+                                                <p className="text-[11px] opacity-90">
+                                                    ✓ Terhubung! Respons model: <span className="font-mono font-semibold text-foreground">"{testResults.llm.responseText}"</span>
+                                                </p>
+                                            ) : (
+                                                <p className="text-[11px] break-words">
+                                                    <strong>Gagal:</strong> {testResults.llm.error}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Embedding Test Result */}
+                                    {testResults.embedding && (
+                                        <div
+                                            className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+                                                testResults.embedding.success
+                                                    ? "bg-emerald-500/5 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                                                    : "bg-destructive/5 border-destructive/30 text-destructive dark:text-red-400"
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between font-semibold">
+                                                <span className="flex items-center gap-1.5">
+                                                    {testResults.embedding.success ? (
+                                                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                                                    ) : (
+                                                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                                    )}
+                                                    Embedding ({testResults.embedding.model})
+                                                </span>
+                                                {testResults.embedding.latencyMs !== undefined && (
+                                                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-background/50 border border-border/40 text-muted-foreground">
+                                                        ⚡ {testResults.embedding.latencyMs}ms
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {testResults.embedding.success ? (
+                                                <p className="text-[11px] opacity-90">
+                                                    ✓ Terhubung! Vektor dihasilkan dengan ukuran <span className="font-mono font-semibold text-foreground">{testResults.embedding.dimension} dimensi</span>.
+                                                </p>
+                                            ) : (
+                                                <p className="text-[11px] break-words">
+                                                    <strong>Gagal:</strong> {testResults.embedding.error}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                         <div className="flex justify-end pt-2 border-t">
                             <Button
                                 disabled={aiSaving}
@@ -1365,8 +1553,8 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
 
-            {/* KB Version Management Bar */}
-            <Card className="rounded-2xl py-0 border-border shadow-sm">
+            {/* KB Version Management Card & Table */}
+            <Card className="rounded-2xl py-0 border-border shadow-sm overflow-hidden">
                 <CardContent className="p-6 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
@@ -1375,7 +1563,7 @@ export default function SettingsPage() {
                             </div>
                             <div>
                                 <h3 className="font-semibold text-foreground text-sm">Manajemen Versi Knowledge Base</h3>
-                                <p className="text-xs text-muted-foreground">Pilih versi KB yang aktif untuk melayani pencarian RAG atau buat versi baru</p>
+                                <p className="text-xs text-muted-foreground">Pilih versi KB yang aktif untuk melayani pencarian RAG, atur snapshot, atau buat versi baru</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1392,30 +1580,114 @@ export default function SettingsPage() {
                     </div>
 
                     {kbVersions.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border/50">
-                            <span className="text-xs font-medium text-muted-foreground">Pilih Versi:</span>
-                            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                                <select
-                                    value={selectedKbVersionId}
-                                    onChange={(e) => setSelectedKbVersionId(e.target.value)}
-                                    className="h-9 text-xs rounded-xl bg-background border border-border px-3 font-mono flex-1"
-                                >
-                                    {kbVersions.map((v) => (
-                                        <option key={v.id} value={v.id}>
-                                            v{v.version} — [{v.status}] ({v.embedding_model})
-                                        </option>
-                                    ))}
-                                </select>
-                                <Button
-                                    onClick={() => handleActivateVersion(selectedKbVersionId)}
-                                    disabled={versionLoading || !selectedKbVersionId}
-                                    size="sm"
-                                    className="h-9 text-xs rounded-xl"
-                                >
-                                    {versionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                                    Aktifkan Versi
-                                </Button>
-                            </div>
+                        <div className="overflow-x-auto border border-border/60 rounded-xl mt-3">
+                            <table className="w-full text-xs text-left">
+                                <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border/60">
+                                    <tr>
+                                        <th className="px-4 py-3">Versi</th>
+                                        <th className="px-3 py-3">Status</th>
+                                        <th className="px-3 py-3">Embedding Model</th>
+                                        <th className="px-3 py-3">Total Chunks</th>
+                                        <th className="px-3 py-3">Waktu Buat / Aktivasi</th>
+                                        <th className="px-3 py-3 text-right">Aksi Status</th>
+                                        <th className="px-3 py-3 text-right">Hapus</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/40">
+                                    {kbVersions.map((v) => {
+                                        const isActive = v.status === "ACTIVE"
+                                        const isBuilding = v.status === "BUILDING"
+                                        const isReady = v.status === "READY"
+                                        const isInactive = v.status === "INACTIVE"
+                                        const isFailed = v.status === "FAILED"
+
+                                        let badgeColor = "bg-muted text-muted-foreground border-border"
+                                        if (isActive) badgeColor = "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 font-bold"
+                                        else if (isBuilding) badgeColor = "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                                        else if (isReady) badgeColor = "bg-blue-500/10 text-blue-600 border-blue-500/30"
+                                        else if (isFailed) badgeColor = "bg-destructive/10 text-destructive border-destructive/30"
+
+                                        return (
+                                            <tr key={v.id} className="hover:bg-muted/30 transition-colors">
+                                                <td className="px-4 py-3 font-mono font-bold text-foreground">
+                                                    v{v.version}
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <span className={`inline-flex items-center gap-1 border px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider ${badgeColor}`}>
+                                                        {isActive && <CheckCircle2 className="w-3 h-3" />}
+                                                        {v.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-3 font-mono text-[11px] text-muted-foreground">
+                                                    {v.embedding_model}
+                                                </td>
+                                                <td className="px-3 py-3 font-semibold text-primary">
+                                                    {v.metadata?.total_chunks || 0}
+                                                </td>
+                                                <td className="px-3 py-3 text-muted-foreground text-[11px]">
+                                                    {v.activated_at ? `Aktif: ${new Date(v.activated_at).toLocaleDateString("id-ID")}` : new Date(v.created_at).toLocaleDateString("id-ID")}
+                                                </td>
+                                                <td className="px-3 py-3 text-right">
+                                                    {isActive ? (
+                                                        <span className="text-[11px] text-emerald-600 font-semibold flex items-center justify-end gap-1">
+                                                            <CheckCircle2 className="w-3.5 h-3.5" /> Active Production
+                                                        </span>
+                                                    ) : isReady ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="default"
+                                                            className="h-7 text-xs px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white gap-1"
+                                                            onClick={() => setActivateKbTarget(v)}
+                                                            disabled={versionLoading}
+                                                        >
+                                                            <CheckCircle2 className="w-3 h-3" />
+                                                            Aktifkan Versi
+                                                        </Button>
+                                                    ) : isInactive ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-7 text-xs px-2.5 rounded-lg border-border hover:bg-accent text-foreground gap-1"
+                                                            onClick={() => setActivateKbTarget(v)}
+                                                            disabled={versionLoading}
+                                                        >
+                                                            <RotateCcw className="w-3 h-3 text-amber-500" />
+                                                            Rollback ke Versi Ini
+                                                        </Button>
+                                                    ) : isBuilding && (v.metadata?.total_chunks || 0) > 0 ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="default"
+                                                            className="h-7 text-xs px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                                                            onClick={() => setActivateKbTarget(v)}
+                                                            disabled={versionLoading}
+                                                        >
+                                                            <CheckCircle2 className="w-3 h-3" />
+                                                            Aktifkan Versi
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-[11px] text-muted-foreground italic">
+                                                            {isBuilding ? "Belum Ada Dokumen" : "Gagal Build"}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-3 py-3 text-right">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        disabled={isActive}
+                                                        title={isActive ? "Versi ACTIVE tidak dapat dihapus. Aktifkan versi lain terlebih dahulu." : "Hapus Versi Knowledge Base"}
+                                                        className={`h-7 px-2 ${isActive ? "opacity-30 cursor-not-allowed" : "text-destructive hover:bg-destructive/10 hover:text-destructive"}`}
+                                                        onClick={() => setDeleteKbTarget(v)}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </CardContent>
@@ -1520,6 +1792,72 @@ export default function SettingsPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Activate KB Version Confirmation Dialog */}
+            <Dialog open={!!activateKbTarget} onOpenChange={(open) => { if (!open) setActivateKbTarget(null) }}>
+                <DialogContent className="rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Aktifkan Knowledge Base v{activateKbTarget?.version}?</DialogTitle>
+                        <DialogDescription className="space-y-2 pt-2 text-xs leading-relaxed">
+                            <span>
+                                Versi yang sedang aktif saat ini akan berubah status dari <strong>ACTIVE ➔ INACTIVE</strong>.
+                                Knowledge Base <strong>v{activateKbTarget?.version}</strong> akan menjadi <strong>ACTIVE (Production)</strong> untuk melayani retrieval chatbot RAG.
+                            </span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setActivateKbTarget(null)} disabled={versionLoading}>Batal</Button>
+                        <Button
+                            onClick={() => {
+                                if (activateKbTarget) {
+                                    handleActivateVersion(activateKbTarget.id)
+                                    setActivateKbTarget(null)
+                                }
+                            }}
+                            disabled={versionLoading}
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                            {versionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                            Konfirmasi Aktivasi v{activateKbTarget?.version}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete KB Version Confirmation Dialog */}
+            <Dialog open={!!deleteKbTarget} onOpenChange={(open) => { if (!open) setDeleteKbTarget(null) }}>
+                <DialogContent className="rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Hapus Knowledge Base v{deleteKbTarget?.version}?</DialogTitle>
+                        <DialogDescription asChild>
+                            <div className="space-y-3 pt-2 text-xs">
+                                <div className="p-3 bg-muted/60 rounded-xl space-y-1 text-muted-foreground font-mono">
+                                    <div><strong>Status:</strong> {deleteKbTarget?.status}</div>
+                                    <div><strong>Total Chunks:</strong> {deleteKbTarget?.metadata?.total_chunks || 0}</div>
+                                    <div><strong>Embedding Model:</strong> {deleteKbTarget?.embedding_model}</div>
+                                </div>
+                                <div className="text-destructive font-medium leading-relaxed">
+                                    ⚠️ Versi ini tidak sedang digunakan oleh chatbot production. Namun setelah dihapus, seluruh data dokumen, chunk, dan vektor embeddings di dalamnya akan dihapus secara permanen dan tidak dapat dipulihkan/di-rollback.
+                                </div>
+                            </div>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteKbTarget(null)} disabled={deleteKbLoading}>Batal</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => {
+                                if (deleteKbTarget) handleDeleteVersion(deleteKbTarget.id)
+                            }}
+                            disabled={deleteKbLoading}
+                            className="gap-2"
+                        >
+                            {deleteKbLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            Hapus Permanen v{deleteKbTarget?.version}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Delete Document Confirmation Dialog */}
             <Dialog open={!!deleteDocTarget} onOpenChange={(open) => { if (!open) setDeleteDocTarget(null) }}>

@@ -158,6 +158,32 @@ export async function DELETE(req: Request) {
 
         const supabaseAdmin = getSupabaseAdmin();
 
+        // Verify target document's KB status is not ACTIVE (Immutability Rule)
+        let targetKbId = kbId;
+        if (!targetKbId && docId && !docId.startsWith("legacy-")) {
+            const { data: docRecord } = await supabaseAdmin
+                .from("source_documents")
+                .select("knowledge_base_id")
+                .eq("id", docId)
+                .maybeSingle();
+            if (docRecord) targetKbId = docRecord.knowledge_base_id;
+        }
+
+        if (targetKbId) {
+            const { data: targetKb } = await supabaseAdmin
+                .from("knowledge_bases")
+                .select("version, status")
+                .eq("id", targetKbId)
+                .single();
+
+            if (targetKb && targetKb.status === "ACTIVE") {
+                return NextResponse.json(
+                    { error: `Dokumen pada Knowledge Base v${targetKb.version} (ACTIVE) tidak dapat dihapus. ACTIVE KB bersifat immutable.` },
+                    { status: 400 }
+                );
+            }
+        }
+
         if (docId && !docId.startsWith("legacy-")) {
             // Delete chunks & document scoped to document_id (and kbId if provided)
             let chunkQuery = supabaseAdmin.from("document_chunks").delete().eq("document_id", docId);

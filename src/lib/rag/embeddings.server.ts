@@ -27,10 +27,15 @@ export interface SearchResult {
  * Get the OpenAI embeddings instance (routed through OpenRouter / Custom Provider).
  * Uses text-embedding-3-small with 768 dimensions to match the pgvector column.
  */
-export async function getEmbeddings(): Promise<OpenAIEmbeddings> {
+export async function getEmbeddings(options?: {
+    model?: string;
+    providerUrl?: string;
+    dimensions?: number;
+}): Promise<OpenAIEmbeddings> {
     const config = await getSystemConfig();
-    let modelName = config.embeddingModel || "text-embedding-3-small";
-    const providerUrl = config.embeddingProviderUrl || "https://openrouter.ai/api/v1";
+    let modelName = options?.model || config.embeddingModel || "text-embedding-3-small";
+    const providerUrl = options?.providerUrl || config.embeddingProviderUrl || "https://openrouter.ai/api/v1";
+    const dimensions = options?.dimensions || 768;
 
     // If using direct OpenAI API (not OpenRouter), strip vendor prefix like 'openai/'
     if (providerUrl.includes("api.openai.com") && modelName.startsWith("openai/")) {
@@ -39,7 +44,7 @@ export async function getEmbeddings(): Promise<OpenAIEmbeddings> {
 
     return new OpenAIEmbeddings({
         model: modelName,
-        dimensions: 768,
+        dimensions: dimensions,
         configuration: {
             baseURL: providerUrl,
         },
@@ -156,19 +161,15 @@ export async function searchDocuments(
         // Apply Reranking to candidate pool
         const reranked = await rerankDocuments(query, candidates, matchCount);
 
-        const threshold = config.ragSimilarityThreshold || 0.35;
-
-        return reranked
-            .filter((item) => (item.rerank_score !== undefined ? item.rerank_score >= threshold : item.similarity >= threshold))
-            .map((item) => ({
-                content: item.content,
-                metadata: item.metadata,
-                similarity: item.similarity,
-                rrf_score: item.rrf_score,
-                rerank_score: item.rerank_score,
-                dense_rank: item.dense_rank,
-                fts_rank: item.fts_rank,
-            }));
+        return reranked.map((item) => ({
+            content: item.content,
+            metadata: item.metadata,
+            similarity: item.similarity,
+            rrf_score: item.rrf_score,
+            rerank_score: item.rerank_score,
+            dense_rank: item.dense_rank,
+            fts_rank: item.fts_rank,
+        }));
     }
 
     // Fallback for legacy documents table (without versioned KB)

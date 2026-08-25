@@ -1,14 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { getEmbeddings } from "@/lib/rag/embeddings.server";
 import { getSystemConfig } from "@/lib/settings.server";
-import {
-    computeChecksum,
-    extractPdfPages,
-    createContentAwareChunks,
-    ParsedPage,
-} from "@/lib/rag/ingestion.server";
+import { ingestDocumentToKnowledgeBase } from "@/lib/rag/ingestion.server";
 
 export const runtime = "nodejs";
 
@@ -54,6 +48,7 @@ export async function POST(req: Request) {
     try {
         const formData = await req.formData();
         const file = formData.get("file") as File | null;
+        let targetKbId = (formData.get("target_kb_id") || formData.get("targetKnowledgeBaseId")) as string | null;
 
         if (!file) {
             return NextResponse.json(
@@ -72,186 +67,83 @@ export async function POST(req: Request) {
             );
         }
 
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
-        let pages: ParsedPage[] = [];
-
-        if (ext === "pdf") {
-            try {
-                pages = await extractPdfPages(buffer);
-            } catch (err) {
-                console.error("PDF Parsing Error:", err);
-                return NextResponse.json(
-                    { error: `Gagal membaca isi file PDF "${filename}".` },
-                    { status: 400 }
-                );
-            }
-        } else {
-            const rawText = buffer.toString("utf-8");
-            if (rawText.trim()) {
-                pages = [{ pageNum: 1, text: rawText }];
-            }
-        }
-
-        if (pages.length === 0) {
-            return NextResponse.json(
-                { error: `File "${filename}" kosong atau tidak memiliki teks yang bisa diekstrak.` },
-                { status: 400 }
-            );
-        }
-
-        const fullText = pages.map((p) => p.text).join("\n\n");
-
-        // 1. Compute SHA-256 Checksum
-        const checksum = computeChecksum(fullText);
-
-        // 2. Get / Create Active Knowledge Base
         const supabaseAdmin = getSupabaseAdmin();
         const config = await getSystemConfig();
 
-        let { data: activeKb } = await supabaseAdmin
-            .from("knowledge_bases")
-            .select("id, version, metadata")
-            .eq("status", "ACTIVE")
-            .order("version", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-        if (!activeKb) {
-            const { data: newKb, error: kbErr } = await supabaseAdmin
+        // If target_kb_id not specified, find an existing BUILDING KB or create one
+        if (!targetKbId) {
+            const { data: buildingKb } = await supabaseAdmin
                 .from("knowledge_bases")
-                .insert({
-                    version: 1,
-                    status: "ACTIVE",
-                    embedding_provider: config.embeddingProviderUrl || "default",
-                    embedding_model: config.embeddingModel,
-                    embedding_dimension: 768,
-                    activated_at: new Date().toISOString(),
-                })
-                .select("id, version, metadata")
-                .single();
+                .select("id")
+                .eq("status", "BUILDING")
+                .order("version", { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-            if (kbErr || !newKb) {
-                throw new Error(`Gagal membuat Knowledge Base versi 1: ${kbErr?.message}`);
+            if (buildingKb) {
+                targetKbId = buildingKb.id;
+            } else {
+                // Determine next version number
+                const { data: latestKb } = await supabaseAdmin
+                    .from("knowledge_bases")
+                    .select("version")
+                    .order("version", { ascending: false })
+                    .limit(1);
+
+                const nextVersion = (latestKb && latestKb.length > 0 ? latestKb[0].version : 0) + 1;
+
+                const { data: newKb, error: createKbErr } = await supabaseAdmin
+                    .from("knowledge_bases")
+                    .insert({
+                        version: nextVersion,
+                        status: "BUILDING",
+                        embedding_provider: config.embeddingProviderUrl || "default",
+                        embedding_model: config.embeddingModel,
+                        embedding_dimension: 768,
+                        metadata: { total_chunks: 0, created_by: "Admin Ingestion" },
+                    })
+                    .select("id")
+                    .single();
+
+                if (createKbErr || !newKb) {
+                    throw new Error(`Gagal membuat Knowledge Base versi BUILDING v${nextVersion}: ${createKbErr?.message}`);
+                }
+
+                targetKbId = newKb.id;
             }
-            activeKb = newKb;
         }
 
-        // 3. Idempotency Check: Check if duplicate checksum exists
-        const { data: existingDoc } = await supabaseAdmin
-            .from("source_documents")
-            .select("id, filename")
-            .eq("knowledge_base_id", activeKb.id)
-            .eq("checksum", checksum)
-            .maybeSingle();
+        if (!targetKbId) {
+            throw new Error("Gagal menentukan target Knowledge Base.");
+        }
 
-        if (existingDoc) {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        // Call unified ingestion service
+        const result = await ingestDocumentToKnowledgeBase({
+            supabaseAdmin,
+            knowledgeBaseId: targetKbId,
+            filename,
+            fileBuffer: buffer,
+        });
+
+        if (result.alreadyExists) {
             return NextResponse.json({
                 success: true,
                 alreadyExists: true,
                 filename: filename,
-                version: activeKb.version,
-                message: `Dokumen "${filename}" sudah pernah di-ingest sebelumnya (SHA-256 Checksum identik).`,
+                version: result.version,
+                message: `Dokumen "${filename}" sudah di-ingest sebelumnya di KB v${result.version}.`,
                 status: "Ready",
             });
-        }
-
-        // 4. Create Content-Aware Chunks
-        const chunks = await createContentAwareChunks(filename, pages);
-
-        if (chunks.length === 0) {
-            return NextResponse.json(
-                { error: "Gagal membuat chunk dokumen. Tidak ada konten valid." },
-                { status: 400 }
-            );
-        }
-
-        // 5. Create Source Document Record
-        const { data: sourceDoc, error: docErr } = await supabaseAdmin
-            .from("source_documents")
-            .insert({
-                knowledge_base_id: activeKb.id,
-                filename: filename,
-                checksum: checksum,
-                metadata: {
-                    source: filename,
-                    chunk_count: chunks.length,
-                    page_count: pages.length,
-                },
-            })
-            .select("id")
-            .single();
-
-        if (docErr || !sourceDoc) {
-            throw new Error(`Gagal membuat data source document: ${docErr?.message}`);
-        }
-
-        // 6. Generate Contextual Embeddings in Batches of 20
-        const embeddingsModel = await getEmbeddings();
-        const BATCH_SIZE = 20;
-        const embeddingTexts = chunks.map((c) => c.embeddingText);
-        const vectorEmbeddings: number[][] = [];
-
-        for (let i = 0; i < embeddingTexts.length; i += BATCH_SIZE) {
-            const batchTexts = embeddingTexts.slice(i, i + BATCH_SIZE);
-            const batchEmbeddings = await embeddingsModel.embedDocuments(batchTexts);
-            vectorEmbeddings.push(...batchEmbeddings);
-        }
-
-        // 7. Validate Embeddings Count
-        if (vectorEmbeddings.length !== chunks.length) {
-            throw new Error(
-                `Ingestion Validation Failed: Generated vectors count (${vectorEmbeddings.length}) does not match chunks count (${chunks.length}).`
-            );
-        }
-
-        // 8. Insert Document Chunks with Rich Metadata
-        const chunksToInsert = chunks.map((chunk, idx) => ({
-            knowledge_base_id: activeKb.id,
-            document_id: sourceDoc.id,
-            content: chunk.content,
-            metadata: {
-                ...chunk.metadata,
-                source: filename,
-            },
-            embedding: vectorEmbeddings[idx],
-        }));
-
-        for (let i = 0; i < chunksToInsert.length; i += BATCH_SIZE) {
-            const batchToInsert = chunksToInsert.slice(i, i + BATCH_SIZE);
-            const { error: insertChunksErr } = await supabaseAdmin
-                .from("document_chunks")
-                .insert(batchToInsert);
-
-            if (insertChunksErr) {
-                throw new Error(`Gagal menyimpan chunk embeddings: ${insertChunksErr.message}`);
-            }
-        }
-
-        // 9. Update total_chunks in Active KB metadata
-        try {
-            const { count: totalChunks } = await supabaseAdmin
-                .from("document_chunks")
-                .select("*", { count: "exact", head: true })
-                .eq("knowledge_base_id", activeKb.id);
-
-            if (totalChunks !== null) {
-                const existingMeta = activeKb.metadata || {};
-                await supabaseAdmin
-                    .from("knowledge_bases")
-                    .update({ metadata: { ...existingMeta, total_chunks: totalChunks } })
-                    .eq("id", activeKb.id);
-            }
-        } catch {
-            // Ignore metadata update error
         }
 
         return NextResponse.json({
             success: true,
             filename: filename,
-            version: activeKb.version,
-            chunkCount: chunks.length,
+            version: result.version,
+            chunkCount: result.chunkCount,
             embeddingModel: config.embeddingModel,
             status: "Ready",
         });
@@ -259,7 +151,7 @@ export async function POST(req: Request) {
         console.error("Knowledge Upload Error:", err);
         return NextResponse.json(
             { error: err.message || "Terjadi kesalahan internal saat pemrosesan dokumen." },
-            { status: 500 }
+            { status: 400 }
         );
     }
 }

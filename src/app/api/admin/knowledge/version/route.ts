@@ -69,7 +69,7 @@ export async function GET() {
     }
 }
 
-// POST /api/admin/knowledge/version — Action create / activate
+// POST /api/admin/knowledge/version — Action create / activate / mark_ready
 export async function POST(req: Request) {
     const isAdmin = await verifyAdminUser();
     if (!isAdmin) {
@@ -119,12 +119,50 @@ export async function POST(req: Request) {
                 message: `Berhasil membuat Knowledge Base versi v${nextVersion} (Status: BUILDING)`,
                 version: newKb,
             });
+        } else if (action === "mark_ready") {
+            if (!kbId) {
+                return NextResponse.json(
+                    { error: "Target KB ID tidak diberikan." },
+                    { status: 400 }
+                );
+            }
+
+            const { data: updated, error: markErr } = await supabaseAdmin
+                .from("knowledge_bases")
+                .update({ status: "READY" })
+                .eq("id", kbId)
+                .select("*")
+                .single();
+
+            if (markErr || !updated) {
+                throw new Error(`Gagal mengubah status KB ke READY: ${markErr?.message}`);
+            }
+
+            return NextResponse.json({
+                success: true,
+                message: `Berhasil mengubah status Knowledge Base v${updated.version} menjadi READY.`,
+                version: updated,
+            });
         } else if (action === "activate") {
             if (!kbId) {
                 return NextResponse.json(
                     { error: "Target KB ID tidak diberikan." },
                     { status: 400 }
                 );
+            }
+
+            // Transition status to READY if currently BUILDING or INACTIVE so activation succeeds
+            const { data: targetKb } = await supabaseAdmin
+                .from("knowledge_bases")
+                .select("id, version, status")
+                .eq("id", kbId)
+                .single();
+
+            if (targetKb && targetKb.status !== "READY" && targetKb.status !== "ACTIVE") {
+                await supabaseAdmin
+                    .from("knowledge_bases")
+                    .update({ status: "READY" })
+                    .eq("id", kbId);
             }
 
             // Call atomic RPC for knowledge base activation
@@ -173,6 +211,102 @@ export async function POST(req: Request) {
         return NextResponse.json(
             { error: err.message || "Gagal memproses manajemen versi KB." },
             { status: 500 }
+        );
+    }
+}
+
+// DELETE /api/admin/knowledge/version — Safe Version-Scoped KB Deletion
+export async function DELETE(req: Request) {
+    const isAdmin = await verifyAdminUser();
+    if (!isAdmin) {
+        return NextResponse.json(
+            { error: "Unauthorized. Fitur ini hanya untuk Administrator." },
+            { status: 403 }
+        );
+    }
+
+    try {
+        const { searchParams } = new URL(req.url);
+        let kbId = searchParams.get("kbId") || searchParams.get("id");
+
+        if (!kbId) {
+            try {
+                const body = await req.json();
+                kbId = body.kbId || body.id;
+            } catch {
+                // Ignore JSON parse error if query param missing
+            }
+        }
+
+        if (!kbId) {
+            return NextResponse.json(
+                { error: "Target Knowledge Base ID tidak diberikan." },
+                { status: 400 }
+            );
+        }
+
+        const supabaseAdmin = getSupabaseAdmin();
+
+        // 1. Try atomic version-scoped deletion RPC
+        const { data: rpcResult, error: rpcErr } = await supabaseAdmin.rpc("delete_knowledge_base_version", {
+            target_kb_id: kbId,
+        });
+
+        if (rpcErr) {
+            // Fallback for raw query if RPC is missing
+            const { data: kb, error: fetchErr } = await supabaseAdmin
+                .from("knowledge_bases")
+                .select("id, version, status, metadata")
+                .eq("id", kbId)
+                .single();
+
+            if (fetchErr || !kb) {
+                return NextResponse.json(
+                    { error: `Knowledge Base dengan ID ${kbId} tidak ditemukan.` },
+                    { status: 404 }
+                );
+            }
+
+            if (kb.status === "ACTIVE") {
+                return NextResponse.json(
+                    { error: `Knowledge Base v${kb.version} sedang ACTIVE dan tidak dapat dihapus. Aktifkan versi lain terlebih dahulu.` },
+                    { status: 400 }
+                );
+            }
+
+            if (kb.metadata?.is_protected === true) {
+                return NextResponse.json(
+                    { error: `Knowledge Base v${kb.version} dilindungi (is_protected = true) dan tidak dapat dihapus.` },
+                    { status: 400 }
+                );
+            }
+
+            const { error: deleteErr } = await supabaseAdmin
+                .from("knowledge_bases")
+                .delete()
+                .eq("id", kbId);
+
+            if (deleteErr) {
+                throw new Error(`Gagal menghapus Knowledge Base: ${deleteErr.message}`);
+            }
+
+            return NextResponse.json({
+                success: true,
+                message: `Berhasil menghapus Knowledge Base v${kb.version}`,
+                deletedVersion: kb.version,
+            });
+        }
+
+        return NextResponse.json({
+            success: true,
+            message: `Berhasil menghapus Knowledge Base v${rpcResult?.version || ""}`,
+            deletedVersion: rpcResult?.version,
+        });
+    } catch (err: any) {
+        console.error("Delete KB Version Error:", err);
+        return NextResponse.json(
+            { error: err.message || "Gagal menghapus versi Knowledge Base." },
+            { status: 400 }
         );
     }
 }
