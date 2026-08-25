@@ -323,9 +323,9 @@ export default function ShrimpMonitoringDashboard() {
                 <div className="flex-1 overflow-y-auto min-h-0 max-h-48 lg:max-h-none pr-2 custom-scrollbar">
                   <h2 className="text-xl font-semibold mb-3 text-foreground sticky top-0 bg-card py-1 z-10">{t("selectVideo")}</h2>
                   <div className="grid grid-cols-2 gap-3 pb-2">
-                    {filteredVideos.map((video) => (
+                    {filteredVideos.map((video, index) => (
                       <Button
-                        key={video.file_url}
+                        key={`${video.file_url}-${video.recorded_at}-${index}`}
                         variant={selectedVideoUrl === video.file_url ? "default" : "outline"}
                         onClick={() => setSelectedVideoUrl(video.file_url)}
                         className="rounded-xl text-xs"

@@ -147,6 +147,8 @@ export async function DELETE(req: Request) {
         const docId = searchParams.get("id");
         const filename = searchParams.get("filename");
 
+        const kbId = searchParams.get("kb_id");
+
         if (!docId && !filename) {
             return NextResponse.json(
                 { error: "ID dokumen atau nama file tidak diberikan." },
@@ -157,14 +159,27 @@ export async function DELETE(req: Request) {
         const supabaseAdmin = getSupabaseAdmin();
 
         if (docId && !docId.startsWith("legacy-")) {
-            // Delete chunks first
-            await supabaseAdmin.from("document_chunks").delete().eq("document_id", docId);
-            await supabaseAdmin.from("source_documents").delete().eq("id", docId);
-        }
+            // Delete chunks & document scoped to document_id (and kbId if provided)
+            let chunkQuery = supabaseAdmin.from("document_chunks").delete().eq("document_id", docId);
+            if (kbId) chunkQuery = chunkQuery.eq("knowledge_base_id", kbId);
+            await chunkQuery;
 
-        if (filename) {
-            await supabaseAdmin.from("document_chunks").delete().filter("metadata->>filename", "eq", filename);
-            await supabaseAdmin.from("documents").delete().filter("metadata->>filename", "eq", filename);
+            let docQuery = supabaseAdmin.from("source_documents").delete().eq("id", docId);
+            if (kbId) docQuery = docQuery.eq("knowledge_base_id", kbId);
+            await docQuery;
+        } else if (filename && kbId) {
+            // Scoped deletion by filename within a specific KB version
+            await supabaseAdmin
+                .from("document_chunks")
+                .delete()
+                .eq("knowledge_base_id", kbId)
+                .filter("metadata->>filename", "eq", filename);
+
+            await supabaseAdmin
+                .from("source_documents")
+                .delete()
+                .eq("knowledge_base_id", kbId)
+                .eq("filename", filename);
         }
 
         // Recalculate remaining total chunks for active Knowledge Base

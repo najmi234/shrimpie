@@ -101,7 +101,7 @@ export async function POST(req: Request) {
                 .from("knowledge_bases")
                 .insert({
                     version: nextVersion,
-                    status: "READY",
+                    status: "BUILDING",
                     embedding_provider: config.embeddingProviderUrl || "default",
                     embedding_model: config.embeddingModel,
                     embedding_dimension: 768,
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
 
             return NextResponse.json({
                 success: true,
-                message: `Berhasil membuat Knowledge Base versi v${nextVersion}`,
+                message: `Berhasil membuat Knowledge Base versi v${nextVersion} (Status: BUILDING)`,
                 version: newKb,
             });
         } else if (action === "activate") {
@@ -127,31 +127,43 @@ export async function POST(req: Request) {
                 );
             }
 
-            // Set all existing ACTIVE to INACTIVE
-            await supabaseAdmin
-                .from("knowledge_bases")
-                .update({ status: "INACTIVE" })
-                .eq("status", "ACTIVE");
+            // Call atomic RPC for knowledge base activation
+            const { data: rpcResult, error: rpcErr } = await supabaseAdmin.rpc("activate_knowledge_base", {
+                target_kb_id: kbId,
+            });
 
-            // Activate target KB
-            const { data: activated, error: activateErr } = await supabaseAdmin
-                .from("knowledge_bases")
-                .update({
-                    status: "ACTIVE",
-                    activated_at: new Date().toISOString(),
-                })
-                .eq("id", kbId)
-                .select("*")
-                .single();
+            if (rpcErr) {
+                // Fallback to two-step query if RPC has not been applied yet
+                await supabaseAdmin.from("knowledge_bases").update({ status: "INACTIVE" }).eq("status", "ACTIVE");
+                const { data: activated, error: activateErr } = await supabaseAdmin
+                    .from("knowledge_bases")
+                    .update({ status: "ACTIVE", activated_at: new Date().toISOString() })
+                    .eq("id", kbId)
+                    .select("*")
+                    .single();
 
-            if (activateErr || !activated) {
-                throw new Error(`Gagal mengaktifkan versi KB: ${activateErr?.message}`);
+                if (activateErr || !activated) {
+                    throw new Error(`Gagal mengaktifkan versi KB: ${activateErr?.message}`);
+                }
+
+                return NextResponse.json({
+                    success: true,
+                    message: `Berhasil mengaktifkan Knowledge Base v${activated.version}`,
+                    activeVersion: activated,
+                });
             }
+
+            // Fetch newly activated KB details
+            const { data: activatedKb } = await supabaseAdmin
+                .from("knowledge_bases")
+                .select("*")
+                .eq("id", kbId)
+                .single();
 
             return NextResponse.json({
                 success: true,
-                message: `Berhasil mengaktifkan Knowledge Base v${activated.version}`,
-                activeVersion: activated,
+                message: `Berhasil mengaktifkan Knowledge Base v${activatedKb?.version || ""}`,
+                activeVersion: activatedKb,
             });
         }
 

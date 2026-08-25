@@ -134,12 +134,19 @@ export default function ChatInterface({
                 return;
             }
 
-            const loaded: ChatMessage[] = rows.map((r: ChatMessageRow) => ({
-                id: r.id,
-                role: r.role,
-                content: r.content,
-                createdAt: parseDateAsLocal(r.created_at),
-            }));
+            const loaded: ChatMessage[] = [];
+            for (const r of rows) {
+                const prev = loaded[loaded.length - 1];
+                if (prev && prev.role === r.role && prev.content === r.content) {
+                    continue; // Skip duplicate message row
+                }
+                loaded.push({
+                    id: r.id,
+                    role: r.role,
+                    content: r.content,
+                    createdAt: parseDateAsLocal(r.created_at),
+                });
+            }
             setMessages(loaded);
         }
         loadMessages();
@@ -342,9 +349,7 @@ export default function ChatInterface({
             }
         }
 
-        if (activeConversationId) {
-            await saveMessage(activeConversationId, "user", userContent);
-        }
+        // Note: User message is saved on server side in /api/chat route to avoid double insertion
 
         const assistantId = (Date.now() + 1).toString();
         setMessages((prev) => [

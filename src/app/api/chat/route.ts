@@ -375,11 +375,12 @@ export async function POST(req: Request) {
                 .from("chat_messages")
                 .select("role, content")
                 .eq("conversation_id", activeConversationId)
-                .order("created_at", { ascending: true })
+                .order("created_at", { ascending: false })
                 .limit(20);
 
             if (dbMsgs && dbMsgs.length > 0) {
-                serverMessages = dbMsgs as any;
+                // Reverse to restore chronological order (oldest to newest among recent 20)
+                serverMessages = (dbMsgs as any[]).reverse();
             }
 
             // Save user message to DB
