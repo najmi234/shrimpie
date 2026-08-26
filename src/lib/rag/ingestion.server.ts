@@ -402,7 +402,7 @@ export async function ingestDocumentToKnowledgeBase(
         await supabaseAdmin
             .from("knowledge_bases")
             .update({
-                status: kb.status === "BUILDING" ? "READY" : kb.status,
+                status: kb.status,
                 metadata: { total_chunks: totalChunks || 0, updated_at: new Date().toISOString() },
             })
             .eq("id", kb.id);

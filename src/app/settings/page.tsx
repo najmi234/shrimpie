@@ -467,6 +467,10 @@ export default function SettingsPage() {
         try {
             const formData = new FormData()
             formData.append("file", selectedUploadFile)
+            const buildingKb = kbVersions.find((v: any) => v.status === "BUILDING")
+            if (buildingKb) {
+                formData.append("target_kb_id", buildingKb.id)
+            }
 
             const res = await fetch("/api/admin/knowledge/upload", {
                 method: "POST",
@@ -482,7 +486,8 @@ export default function SettingsPage() {
             setUploadStatus("Ready")
             setUploadProgressMsg(`Dokumen "${data.filename}" berhasil diproses (${data.chunkCount} chunks, Knowledge Base v${data.version}).`)
             setSelectedUploadFile(null)
-            fetchKbDocuments()
+            await fetchKbDocuments()
+            await fetchKbVersions()
         } catch (err: any) {
             setUploadStatus("Failed")
             setUploadProgressMsg(err.message || "Gagal mengunggah dokumen.")
@@ -511,6 +516,8 @@ export default function SettingsPage() {
 
             setKbDocuments((prev) => prev.filter((d) => d.id !== deleteDocTarget.id && d.filename !== deleteDocTarget.filename))
             setDeleteDocTarget(null)
+            await fetchKbDocuments()
+            await fetchKbVersions()
         } catch (err: any) {
             console.error("Delete doc error:", err)
         } finally {
@@ -1567,6 +1574,23 @@ export default function SettingsPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                    fetchKbVersions()
+                                    fetchKbDocuments()
+                                }}
+                                disabled={versionLoading || kbLoading}
+                                className="h-9 gap-1.5 text-xs rounded-xl"
+                            >
+                                {versionLoading || kbLoading ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="w-3.5 h-3.5 text-teal-500" />
+                                )}
+                                Refresh
+                            </Button>
                             <Button
                                 onClick={handleCreateNewVersion}
                                 disabled={versionLoading}

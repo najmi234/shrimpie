@@ -27,10 +27,7 @@
     "hero": {
       "badge": "Smart Solution for Shrimp Farming",
       "titleLine1": "Revolutionize Shrimp Farming with",
-      "typingWords": [
-        "Artificial Intelligence",
-        "Kecerdasan Buatan"
-      ],
+      "typingWords": ["Artificial Intelligence", "Kecerdasan Buatan"],
       "description": "Real-time monitoring of Vannamei shrimp growth using Computer Vision and precision IoT control.",
       "ctaDashboard": "Open Dashboard",
       "ctaLearnMore": "Learn Our Technology"
@@ -350,7 +347,7 @@
   },
   "chatInterface": {
     "welcomePrefix": "Hello! I am your **Shrimpie Advisor**.",
-    "welcomePond": " I have analyzed the data from pond **{pondName}**.",
+    "welcomePond": " I am ready to help you manage pond **{pondName}**.",
     "welcomePondParams": "**Current Pond Parameters:**",
     "avgWeight": "Average Weight: **{weight} grams**",
     "avgLength": "Average Length: **{length} cm**",

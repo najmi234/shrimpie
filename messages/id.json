@@ -27,10 +27,7 @@
     "hero": {
       "badge": "Solusi Cerdas untuk Tambak Udang",
       "titleLine1": "Revolusi Tambak Udang dengan",
-      "typingWords": [
-        "Kecerdasan Buatan",
-        "Artificial Intelligence"
-      ],
+      "typingWords": ["Kecerdasan Buatan", "Artificial Intelligence"],
       "description": "Monitoring pertumbuhan udang Vannamei secara real-time menggunakan Computer Vision dan kontrol IoT yang presisi.",
       "ctaDashboard": "Buka Beranda",
       "ctaLearnMore": "Pelajari Teknologi Kami"
@@ -350,7 +347,7 @@
   },
   "chatInterface": {
     "welcomePrefix": "Halo! Saya adalah **Shrimpie Advisor** Anda.",
-    "welcomePond": " Saya telah menganalisis data dari kolam **{pondName}**.",
+    "welcomePond": " Saya siap membantu anda untuk mengelola kolam **{pondName}**.",
     "welcomePondParams": "**Parameter Kolam Saat Ini:**",
     "avgWeight": "Rata-rata Berat: **{weight} gram**",
     "avgLength": "Rata-rata Panjang: **{length} cm**",

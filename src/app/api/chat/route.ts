@@ -22,7 +22,7 @@ const messageSchema = z.object({
 const metricHistoryItemSchema = z.object({
     avg_body_weight_g: z.number(),
     avg_body_length_cm: z.number(),
-    activity_level_pct: z.number(),
+    activity_level: z.number(),
     recorded_at: z.string(),
 });
 
@@ -479,16 +479,17 @@ export async function POST(req: Request) {
             }
 
             if (trustedPond.metricsHistory.length > 0) {
-                pertumbuhanDataSection += `\n**Riwayat Seluruh Data Pertumbuhan Device (${trustedPond.metricsHistory.length} data, diurutkan dari terlama ke terbaru):**
+                const recentHistory = trustedPond.metricsHistory.slice(-10);
+                pertumbuhanDataSection += `\n**Riwayat Data Pertumbuhan Terkini (${recentHistory.length} sampel terakhir):**
 | No | Waktu Pencatatan | Berat (g) | Panjang (cm) | Keaktifan (px/s) |
 |----|-----------------|-----------|-------------|--------------|
 `;
-                trustedPond.metricsHistory.forEach((m, i) => {
+                recentHistory.forEach((m, i) => {
                     const date = parseDateAsLocal(m.recorded_at).toLocaleString("id-ID", {
                         dateStyle: "short",
                         timeStyle: "short",
                     });
-                    pertumbuhanDataSection += `| ${i + 1} | ${date} | ${m.avg_body_weight_g} | ${m.avg_body_length_cm} | ${m.activity_level_pct} |\n`;
+                    pertumbuhanDataSection += `| ${i + 1} | ${date} | ${m.avg_body_weight_g} | ${m.avg_body_length_cm} | ${m.activity_level} |\n`;
                 });
             }
         } else if (parameters) {
@@ -513,21 +514,23 @@ export async function POST(req: Request) {
                 pertumbuhanDataSection += `**Data Pertumbuhan Udang Terkini (${parseDateAsLocal(latest.recorded_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}):**
 - Rata-rata Berat Udang: ${latest.avg_body_weight_g} gram
 - Rata-rata Panjang Udang: ${latest.avg_body_length_cm} cm
-- Tingkat Keaktifan: ${latest.activity_level_pct} px/s
+- Tingkat Keaktifan: ${latest.activity_level} px/s
 `;
                 if (resolvedDoc !== null && resolvedDoc >= 0) {
                     pertumbuhanDataSection += `- Umur Udang (DOC): ${resolvedDoc} hari\n`;
                 }
-                pertumbuhanDataSection += `\n**Riwayat Seluruh Data Pertumbuhan Device (${metricsHistory.length} data, diurutkan dari terlama ke terbaru):**
+
+                const recentHistory = metricsHistory.slice(-10);
+                pertumbuhanDataSection += `\n**Riwayat Data Pertumbuhan Terkini (${recentHistory.length} sampel terakhir):**
 | No | Waktu Pencatatan | Berat (g) | Panjang (cm) | Keaktifan (px/s) |
 |----|-----------------|-----------|-------------|--------------|
 `;
-                metricsHistory.forEach((m, i) => {
+                recentHistory.forEach((m, i) => {
                     const date = parseDateAsLocal(m.recorded_at).toLocaleString("id-ID", {
                         dateStyle: "short",
                         timeStyle: "short",
                     });
-                    pertumbuhanDataSection += `| ${i + 1} | ${date} | ${m.avg_body_weight_g} | ${m.avg_body_length_cm} | ${m.activity_level_pct} |\n`;
+                    pertumbuhanDataSection += `| ${i + 1} | ${date} | ${m.avg_body_weight_g} | ${m.avg_body_length_cm} | ${m.activity_level} |\n`;
                 });
             } else {
                 pertumbuhanDataSection = `**Data Pertumbuhan Udang Saat Ini:**
@@ -567,7 +570,8 @@ ${ragContext}
 5. Sebutkan sumber dokumen di akhir setiap poin/penjelasan jika menggunakan informasi dari referensi dokumen pengetahuan, dengan format teks biasa: (Sumber: nama_file.pdf, Hal. X-Y) (contoh: (Sumber: sop.pdf, Hal. 15-16)). DILARANG menggunakan link markdown, tombol, atau modal popup.
 6. Kaitkan jawaban dengan data Pertumbuhan dan Rekomendasi SOP hanya jika pertanyaan user secara spesifik membahas kondisi kolam mereka.
 7. Gunakan format Markdown (bullet points, bold, tabel) agar mudah dibaca.
-8. Jika ditanya di luar konteks budidaya udang atau perikanan, tolak dengan sopan dan kembalikan topik ke akuakultur.`;
+8. Jika menyertakan rumus matematika atau kalkulasi (seperti ABW, FCR, FR, ADG), tuliskan rumus secara bersih dan rapi menggunakan format teks biasa/bold (contoh: **ABW = Berat Udang (g) / Jumlah Udang**) atau format pembagian biasa. DILARANG KERAS menggunakan sintaks LaTeX raw seperti $$\text{...}$$ atau \frac{...}{...} agar hasil baca di layar petambak jernih dan rapi.
+9. Jika ditanya di luar konteks budidaya udang atau perikanan, tolak dengan sopan dan kembalikan topik ke akuakultur.`;
 
         // ─── 11. Initialize LangChain ChatOpenAI with maxTokens ──────
         const model = new ChatOpenAI({

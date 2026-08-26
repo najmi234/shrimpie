@@ -4,7 +4,7 @@ import { parseDateAsLocal } from "@/lib/utils";
 export interface TrustedPondMetric {
     avg_body_weight_g: number;
     avg_body_length_cm: number;
-    activity_level_pct: number;
+    activity_level: number;
     recorded_at: string;
 }
 
@@ -59,31 +59,35 @@ export async function getAuthorizedPondContext(
         };
     }
 
-    // 2. Fetch metrics history directly from database
+    // 2. Fetch recent metrics history from database (limit to 30 most recent records)
     const { data: rawMetrics, error: metricsError } = await supabase
         .from("pond_metrics")
-        .select("avg_body_weight_g, avg_body_length_cm, activity_level_pct, recorded_at")
+        .select("avg_body_weight_g, avg_body_length_cm, activity_level, recorded_at")
         .eq("pond_id", pondId)
-        .order("recorded_at", { ascending: true });
+        .order("recorded_at", { ascending: false })
+        .limit(30);
 
     if (metricsError) {
         console.error("Failed to fetch pond metrics for pond", pondId, metricsError);
     }
 
+    // Reverse to restore chronological order (oldest to newest among recent 30)
+    const orderedRawMetrics = (rawMetrics || []).reverse();
+
     // 3. Sanitize and validate metrics data
     const now = new Date().getTime();
-    const validatedMetrics: TrustedPondMetric[] = (rawMetrics || [])
+    const validatedMetrics: TrustedPondMetric[] = orderedRawMetrics
         .filter((m) => {
             // Reject negative values and future dates
             const recordedTime = parseDateAsLocal(m.recorded_at).getTime();
             if (isNaN(recordedTime) || recordedTime > now + 300000) return false; // 5 min grace
-            if (m.avg_body_weight_g < 0 || m.avg_body_length_cm < 0 || m.activity_level_pct < 0) return false;
+            if (m.avg_body_weight_g < 0 || m.avg_body_length_cm < 0 || m.activity_level < 0) return false;
             return true;
         })
         .map((m) => ({
             avg_body_weight_g: Number(m.avg_body_weight_g) || 0,
             avg_body_length_cm: Number(m.avg_body_length_cm) || 0,
-            activity_level_pct: Number(m.activity_level_pct) || 0,
+            activity_level: Number(m.activity_level) || 0,
             recorded_at: m.recorded_at,
         }));
 
@@ -110,7 +114,7 @@ export async function getAuthorizedPondContext(
                 ? {
                       avgWeightGram: latest.avg_body_weight_g,
                       avgLengthCm: latest.avg_body_length_cm,
-                      activitySpeedPxS: latest.activity_level_pct,
+                      activitySpeedPxS: latest.activity_level,
                       recordedAt: latest.recorded_at,
                   }
                 : null,

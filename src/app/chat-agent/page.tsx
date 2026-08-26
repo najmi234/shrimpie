@@ -34,7 +34,7 @@ interface PondMetric {
     pond_id: string
     avg_body_length_cm: number
     avg_body_weight_g: number
-    activity_level_pct: number
+    activity_level: number
     recorded_at: string
 }
 
@@ -205,7 +205,7 @@ function ChatAgentContent() {
         pondId: selectedPondId || undefined,
         avg_weight: latestMetric?.avg_body_weight_g ?? 0,
         avg_length: latestMetric?.avg_body_length_cm ?? 0,
-        activity_level: latestMetric?.activity_level_pct ?? 0,
+        activity_level: latestMetric?.activity_level ?? 0,
         pondName: selectedPondName || undefined,
         metricsHistory: metrics,
         doc: doc ?? undefined,

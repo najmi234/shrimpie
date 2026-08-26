@@ -31,7 +31,7 @@ interface PondMetric {
   pond_id: string
   avg_body_length_cm: number
   avg_body_weight_g: number
-  activity_level_pct: number
+  activity_level: number
   recorded_at: string
 }
 
@@ -230,8 +230,8 @@ export default function ShrimpMonitoringDashboard() {
       },
       {
         title: t("activityLevel"),
-        value: latestMetric?.activity_level_pct ?? 0,
-        data: metrics.map((m) => ({ time: formatRecordedAt(m.recorded_at), value: m.activity_level_pct })),
+        value: latestMetric?.activity_level ?? 0,
+        data: metrics.map((m) => ({ time: formatRecordedAt(m.recorded_at), value: m.activity_level })),
         color: "#6366f1",
         icon: Activity,
       },
@@ -252,7 +252,7 @@ export default function ShrimpMonitoringDashboard() {
   const recommendation = useMemo(() => {
     if (metrics.length === 0) return null
     const latest = metrics[metrics.length - 1]
-    return getHandlingRecommendation(doc, latest.avg_body_weight_g, latest.avg_body_length_cm, latest.activity_level_pct, t)
+    return getHandlingRecommendation(doc, latest.avg_body_weight_g, latest.avg_body_length_cm, latest.activity_level, t)
   }, [metrics, doc, t])
 
 

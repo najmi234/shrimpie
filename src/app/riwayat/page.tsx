@@ -160,12 +160,24 @@ function RiwayatPageContent() {
         fetchPonds()
     }, [])
 
+    // Update date range filters to default from Stocking Date to Today whenever selected pond changes
+    useEffect(() => {
+        if (!selectedPondName || ponds.length === 0) return
+        const pond = ponds.find((p) => p.name === selectedPondName)
+        if (pond?.stocking_date) {
+            setFromDate(format(parseISO(pond.stocking_date), "yyyy-MM-dd"))
+        } else {
+            setFromDate(format(subDays(new Date(), 29), "yyyy-MM-dd"))
+        }
+        setToDate(format(new Date(), "yyyy-MM-dd"))
+    }, [selectedPondName, ponds])
+
     // Fetch metrics when pond changes
     const fetchMetrics = async () => {
         if (!selectedPondId) return
         const { data, error } = await supabase
             .from("pond_metrics")
-            .select("id, avg_body_length_cm, avg_body_weight_g, activity_level_pct, recorded_at, location")
+            .select("id, avg_body_length_cm, avg_body_weight_g, activity_level, recorded_at, location")
             .eq("pond_id", selectedPondId)
             .order("recorded_at", { ascending: true })
         if (error) {
@@ -181,7 +193,7 @@ function RiwayatPageContent() {
                 time: format(d, "HH:mm"),
                 length: m.avg_body_length_cm ?? 0,
                 weight: m.avg_body_weight_g ?? 0,
-                activity: m.activity_level_pct ?? 0,
+                activity: m.activity_level ?? 0,
                 location: m.location ?? null,
             }
         })
@@ -322,6 +334,21 @@ function RiwayatPageContent() {
                                 className="h-9 w-full sm:w-[150px] text-sm border-border"
                             />
                         </div>
+                        {stockingDate && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setFromDate(format(stockingDate, "yyyy-MM-dd"))
+                                    setToDate(format(new Date(), "yyyy-MM-dd"))
+                                }}
+                                className="h-9 px-3 text-xs text-teal-600 dark:text-teal-400 border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/20 font-medium rounded-xl whitespace-nowrap"
+                                title="Set rentang tanggal dari Tanggal Tebar (Stocking Date) hingga hari ini"
+                            >
+                                📅 Stocking Date
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>

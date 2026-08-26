@@ -33,7 +33,7 @@ interface PondMetric {
     pond_id: string;
     avg_body_length_cm: number;
     avg_body_weight_g: number;
-    activity_level_pct: number;
+    activity_level: number;
     recorded_at: string;
 }
 
@@ -72,6 +72,21 @@ function formatDate(dateStr: string) {
     const hh = String(d.getHours()).padStart(2, "0");
     const min = String(d.getMinutes()).padStart(2, "0");
     return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+}
+
+function formatLatexMathFormulas(content: string): string {
+    if (!content) return content;
+    let cleaned = content;
+    // Replace \text{...} with text inside
+    cleaned = cleaned.replace(/\\text\{([^}]+)\}/g, "$1");
+    // Replace \frac{num}{den} with (num / den)
+    cleaned = cleaned.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1 / $2)");
+    // Replace $$ math $$ with bold markdown
+    cleaned = cleaned.replace(/\$\$\s*([^$]+?)\s*\$\$/g, "**$1**");
+    cleaned = cleaned.replace(/\$\s*([^$]+?)\s*\$/g, "*$1*");
+    // Remove LaTeX modifiers
+    cleaned = cleaned.replace(/\\(mathrm|bm|left|right|cdot|times)/g, " ");
+    return cleaned;
 }
 
 function buildWelcomeMessage(parameters: PondParameters, t: any): ChatMessage {
@@ -526,7 +541,7 @@ export default function ChatInterface({
                                                 p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
                                             }}
                                         >
-                                            {message.content}
+                                            {formatLatexMathFormulas(message.content)}
                                         </ReactMarkdown>
                                     )}
                                 </div>

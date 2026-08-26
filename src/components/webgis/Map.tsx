@@ -60,7 +60,7 @@ interface PondWithMetrics {
     latestMetrics: {
         avg_body_length_cm: string;
         avg_body_weight_g: string;
-        activity_level_pct: string;
+        activity_level: string;
         recorded_at: string;
     } | null;
 }
@@ -187,7 +187,7 @@ export default function WebGISMap() {
                 // Fetch latest metric per pond
                 const { data: metricsData, error: metricsError } = await supabase
                     .from("pond_metrics")
-                    .select("pond_id, avg_body_length_cm, avg_body_weight_g, activity_level_pct, recorded_at")
+                    .select("pond_id, avg_body_length_cm, avg_body_weight_g, activity_level, recorded_at")
                     .order("recorded_at", { ascending: false });
 
                 if (metricsError) throw metricsError;
@@ -211,7 +211,7 @@ export default function WebGISMap() {
                         latestMetrics: metric ? {
                             avg_body_length_cm: metric.avg_body_length_cm,
                             avg_body_weight_g: metric.avg_body_weight_g,
-                            activity_level_pct: metric.activity_level_pct,
+                            activity_level: metric.activity_level,
                             recorded_at: metric.recorded_at,
                         } : null,
                     };
@@ -563,7 +563,7 @@ export default function WebGISMap() {
                                                 </div>
                                                 <div className="bg-muted/40 p-2 rounded-lg text-xs">
                                                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 flex items-center gap-1"><Activity className="w-3 h-3" /> Aktivitas</p>
-                                                    <p className="font-medium text-foreground">{pond.latestMetrics.activity_level_pct} px/s</p>
+                                                    <p className="font-medium text-foreground">{pond.latestMetrics.activity_level} px/s</p>
                                                 </div>
                                                 <div className="bg-muted/40 p-2 rounded-lg text-xs">
                                                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Waktu Rekam</p>
